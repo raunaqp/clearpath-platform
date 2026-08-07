@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Tailwind v4 does not auto-load tailwind.config.ts — without this directive
+   the semantic-token utilities (bg-teal-deep, text-ink, bg-bg-card, …) silently
+   no-op. This brings the JS config (the Teal Trust palette) back online. Same
+   setup as the ClearPath app. */
+@config "../tailwind.config.ts";
+
+@plugin "tailwindcss-animate";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  --background: #F7F6F2;
+  --foreground: #0E1411;
+  --card: #FDFCF8;
+  --primary: #0F6E56;
+  --muted-foreground: #6B766F;
+  --border: #D9D5C8;
+  --ring: #0F6E56;
+  --radius: 0.5rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #F7F6F2;
+  color: #0E1411;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #0F6E56;
+  color: #ffffff;
+}
+
+/* Hairline borders — the ClearPath house style (0.5px feel via 1px + soft
+   color). Prefer border-line / border-line-soft utilities in components. */
+:focus-visible {
+  outline: 2px solid #0F6E56;
+  outline-offset: 2px;
+}
