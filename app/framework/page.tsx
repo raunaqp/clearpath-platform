@@ -315,6 +315,35 @@ export default function FrameworkPage() {
         </p>
       </section>
 
+      {/* ── Community call (brief §7.4) ──────────────────────────────────────
+          Flagged in the brief as present in the earlier draft but absent from
+          the 14 Aug Word doc; open question 7 asked keep-or-cut. RESOLVED
+          (17 Aug): keep. Contact is a single mailto, matching the same call
+          made for /about — a form would mean storage and a DPDP notice. */}
+      <section className="space-y-4 rounded-2xl border border-line bg-bg-card px-6 py-6">
+        <h2 className="font-serif text-2xl text-ink">We&apos;re building a community for:</h2>
+        <ul className="space-y-2.5">
+          {[
+            ["Open data sets", "Shared, documented evaluation data for clinical AI in India, rather than each team rebuilding a private set."],
+            ["Benchmarking existing LLMs", "Measuring what general-purpose models actually get right and wrong on regulatory and clinical tasks, in the open."],
+            ["Open call for collaborations", "Hospitals, innovators, researchers, and funders who want to work on this with us — reach out."],
+          ].map(([lead, rest]) => (
+            <li key={lead} className="flex gap-2.5 text-sm leading-relaxed text-ink-2">
+              <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-teal-deep" />
+              <span>
+                <span className="font-medium text-ink">{lead}</span> — {rest}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <a
+          href="mailto:raunaq.pradhan@gmail.com"
+          className="inline-flex items-center gap-1 text-sm text-teal-deep underline decoration-line underline-offset-4 hover:opacity-80"
+        >
+          raunaq.pradhan@gmail.com
+        </a>
+      </section>
+
       {/* Cross-link to /research. The PDMF is the deployment standard; the
           research page is the regulatory engine. Same method, different
           question — and /research is reachable only from here and home §4,

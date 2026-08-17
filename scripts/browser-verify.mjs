@@ -498,6 +498,15 @@ try {
   // old one. "focused subset" is the framing to keep.
   ok("no gates↔clusters correspondence claim", !t.includes("correspond to the") && !t.includes("gates correspond"));
   ok("honest framing kept: a focused subset, not one-to-one", t.includes("focused subset") && t.includes("does not map onto them one-to-one") && t.includes("the per-dimension split does not"));
+  // Community call (brief §7.4) — kept, per the 17 Aug call on open question 7.
+  ok("community block: all three strands", t.includes("we're building a community for") && t.includes("open data sets") && t.includes("benchmarking existing llms") && t.includes("open call for collaborations"));
+  const commMail = await page.evaluate(() => {
+    const a = [...document.querySelectorAll('a[href^="mailto:"]')].find((e) => /raunaq/i.test(e.href));
+    return a ? a.getAttribute("href") : null;
+  });
+  // A mailto, deliberately — a form would mean storage and a DPDP notice.
+  ok("community contact is a mailto (no form)", commMail === "mailto:raunaq.pradhan@gmail.com", commMail ?? "MISSING");
+  ok("no contact form on /framework", (await page.evaluate(() => document.querySelectorAll("form, input[type=email]").length)) === 0);
   ok("D2 buyer-conditional split (public procurement vs private investment case)", t.includes("buyer-conditional") && t.includes("state / government procurement") && t.includes("private-hospital investment-case") && t.includes("roi / payback") && t.includes("liability & indemnity"));
 
   console.log("\n── RESEARCH (regulatory benchmark) page + entry points ──");
