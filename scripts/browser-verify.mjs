@@ -492,6 +492,12 @@ try {
   ok("weighting note: workflow + data weigh as much as evidence", t.includes("outweigh") && t.includes("necessary") && t.includes("not sufficient"));
   ok("sample report: 'Conditionally deployable' + dimension averages (illustrative)", t.includes("conditionally deployable") && t.includes("scaffolded programme") && t.includes("illustrative") && t.includes("2.4") && t.includes("1.6"));
   ok("openness line: open, 3 tools / 8 districts / 75,000+", t.includes("open and practitioner-led") && t.includes("8 districts") && t.includes("75,000"));
+  // The gates↔clusters correspondence claim was FALSE and must stay deleted:
+  // totals match on both buyer paths, per-dimension splits don't (clusters
+  // 4/3/4/6, gates 5/3/4/5). Assert the honest framing, and the absence of the
+  // old one. "focused subset" is the framing to keep.
+  ok("no gates↔clusters correspondence claim", !t.includes("correspond to the") && !t.includes("gates correspond"));
+  ok("honest framing kept: a focused subset, not one-to-one", t.includes("focused subset") && t.includes("does not map onto them one-to-one") && t.includes("the per-dimension split does not"));
   ok("D2 buyer-conditional split (public procurement vs private investment case)", t.includes("buyer-conditional") && t.includes("state / government procurement") && t.includes("private-hospital investment-case") && t.includes("roi / payback") && t.includes("liability & indemnity"));
 
   console.log("\n── RESEARCH (regulatory benchmark) page + entry points ──");

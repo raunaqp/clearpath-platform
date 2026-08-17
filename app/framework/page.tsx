@@ -4,8 +4,14 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 /**
  * Framework (methodology) page — DESCRIBES the authoritative PDMF standard.
  * Additive and static: it does not touch the engine, scoring, verdicts, or any
- * flow. The platform implements this framework progressively (its 17 gates map
- * to the 17 clusters below; the framework specifies the 112 underlying items).
+ * flow.
+ *
+ * The platform's gate set is a focused SUBSET the tool runs today. It is
+ * related to the clusters below but NOT one-to-one with them, and this file
+ * must not claim otherwise. The totals coincide on both buyer paths — 17 gates
+ * and 17 clusters public, 19 and 19 private — but the per-dimension splits do
+ * not: clusters run 4/3/4/6 across D1–D4 while gates run 5/3/4/5. Matching
+ * totals are a coincidence of two independently-built sets, not a mapping.
  */
 
 type Cluster = { code: string; name: string; count: number; assesses: string };
@@ -301,10 +307,11 @@ export default function FrameworkPage() {
           transparent standard rather than a private checklist.
         </p>
         <p className="mt-4 border-t border-line pt-4 text-xs leading-relaxed text-muted">
-          ClearPath implements this framework progressively: the platform's 17 gates correspond to the
-          17 clusters above, and the framework specifies the {TOTAL_QUESTIONS} underlying items each is
-          built toward. The live tool runs a focused subset today — this page describes the standard,
-          not the current question count.
+          ClearPath implements this framework progressively. The live tool runs a focused subset
+          today — a gate set drawn from these same four dimensions, which is related to the clusters
+          above but does not map onto them one-to-one: the totals happen to match, the per-dimension
+          split does not. This page describes the standard and the {TOTAL_QUESTIONS} items it
+          specifies, not the current question count in the product.
         </p>
       </section>
 
