@@ -46,6 +46,15 @@ async function regLink(page, matchText) {
   }, matchText);
 }
 const regOk = (r) => !!r && r.href.includes("clearpath-medtech.vercel.app") && r.target === "_blank" && /noopener/.test(r.rel);
+// Site restructure: the PUBLIC header (Home · About · Framework + Login) shows
+// until a persona is picked. Any assertion about the PRODUCT nav therefore has
+// to set the signed-in flag as well as the role — setting the role alone now
+// leaves you on the public header.
+const signInAs = (page, role) =>
+  page.evaluate((role) => {
+    localStorage.setItem("clearpath-role", role);
+    localStorage.setItem("clearpath-signed-in", "true");
+  }, role);
 
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox"] });
 const page = await browser.newPage();
@@ -55,25 +64,60 @@ try {
   await page.goto(BASE + "/", { waitUntil: "networkidle2" });
   await page.evaluate(() => { localStorage.clear(); });
 
-  console.log("\n── HOME landing: hero, problem, doors, how-it-works, trust ──");
+  console.log("\n── PUBLIC header: Home · About · Framework + Login ──");
   await goto(page, "/");
+  let nav = await navText(page);
+  ok("public nav = Home / About / Framework only", nav.includes("home") && nav.includes("about") && nav.includes("framework") && !nav.includes("inbox") && !nav.includes("registry") && !nav.includes("site readiness") && !nav.includes("my applications"));
+  ok("Login button (not the product 'Login as')", (await body(page)).includes("login"));
+  ok("/about resolves (not a 404)", (await page.evaluate(async () => (await fetch("/about")).status)) === 200);
+
+  console.log("\n── HOME landing: hero, entry cards, marketplace band, how-it-works, trust ──");
   let t = await body(page);
-  ok("hero headline", t.includes("clinical ai, from validated to safely deployed"));
+  ok("hero headline", t.includes("discover, deployment and evaluation platform for digital and ai solutions for hospitals"));
+  ok("hero sub-paragraph", t.includes("more ai tools than it can safely evaluate and deploy") && t.includes("without pilot hell"));
   ok("brand ClearPath (no Slingshot)", t.includes("clearpath") && !t.includes("slingshot"));
-  ok("problem band (pilot hell, 3)", t.includes("pilots stall and die") && t.includes("no one owns the tool") && t.includes("actually host it"));
-  ok("three doors present", t.includes("for hospitals") && t.includes("for vendors") && t.includes("registry") && t.includes("evaluate, place & run") && t.includes("get your tool evaluated"));
+  // §2.1 deleted the pilot-death band outright. Assert it STAYS deleted.
+  ok("pilot-death band removed", !t.includes("pilots stall and die") && !t.includes("no one owns the tool"));
+  ok("three entry cards present", t.includes("for hospitals") && t.includes("for innovators") && t.includes("the marketplace") && t.includes("discover, evaluate and deploy tools safely") && t.includes("get your product evaluated"));
+  ok("marketplace supporting lines (§2.3)", t.includes("get connected to hospitals and innovators based on your need") && t.includes("a public directory of clinically assessed tools and digitally ready hospitals"));
   ok("how it works (assess/place/run/prove)", t.includes("assess") && t.includes("place") && t.includes("run") && t.includes("prove"));
   ok("trust line (CDSCO/DPDP/ABDM-aware)", t.includes("abdm-aware") && t.includes("calibrated language"));
-  const homeReg = await page.evaluate(() => {
-    const a = [...document.querySelectorAll("a")].find((e) => /regulatory journey/i.test(e.textContent));
-    return a ? { href: a.href, target: a.target, rel: a.rel } : null;
-  });
-  ok("home quiet regulatory on-ramp → clearpath-medtech, new tab", !!homeReg && homeReg.href.includes("clearpath-medtech.vercel.app") && homeReg.target === "_blank" && /noopener/.test(homeReg.rel), homeReg ? homeReg.href : "none");
-  await clickText(page, "Enter");
-  await page.waitForFunction(() => location.pathname === "/hospitals", { timeout: 6000 }).catch(() => {});
-  ok("a door routes correctly (/hospitals)", (await page.evaluate(() => location.pathname)) === "/hospitals");
+  // §4 on-ramp: the link text is now "Start there", not "regulatory journey".
+  const homeReg = await regLink(page, "start there");
+  ok("home regulatory on-ramp → clearpath-medtech, new tab", regOk(homeReg), homeReg ? homeReg.href : "MISSING");
+  // Entry cards replace the old three doors: two anchor into this page, the
+  // marketplace card routes to the directory. All three must be real links.
+  const cards = await page.evaluate(() => ({
+    hospitals: !!document.querySelector('a[href="#for-hospitals"]'),
+    innovators: !!document.querySelector('a[href="#for-innovators"]'),
+    marketplace: !!document.querySelector('a[href="/registry"]'),
+    targets: !!document.querySelector("#for-hospitals") && !!document.querySelector("#for-innovators"),
+  }));
+  ok("entry card → For hospitals anchors into §3", cards.hospitals);
+  ok("entry card → For innovators anchors into §4", cards.innovators);
+  ok("entry card → The marketplace routes to the directory", cards.marketplace);
+  ok("both in-page anchor targets exist", cards.targets);
 
-  console.log("\n── /hospitals landing ──");
+  console.log("\n── §3 hospital accordion: collapsed by default, one open at a time ──");
+  ok("§3 heading", t.includes("stop running pilots that go nowhere"));
+  ok("four item headers visible", t.includes("discover and compare") && t.includes("check your site readiness") && t.includes("deploy and test") && t.includes("audit trail and scorecard"));
+  ok("collapsed by default (no panel copy showing)", !t.includes("via india's first vendor-neutral ai marketplace"));
+  await clickText(page, "Discover and compare");
+  await sleep(300);
+  t = await body(page);
+  ok("expands on click", t.includes("via india's first vendor-neutral ai marketplace"));
+  await clickText(page, "Deploy and test");
+  await sleep(400);
+  t = await body(page);
+  ok("one open at a time (first item closed)", !t.includes("via india's first vendor-neutral ai marketplace"));
+  // The demo wires the real component to the mock api, so it arrives after the
+  // simulated latency (getDeployment → getMonitoring). Wait for it, don't guess.
+  const demoUp = await waitText(page, "drift — data & prediction");
+  t = await body(page);
+  ok("§3.3 demo renders the real monitoring dashboard", demoUp && t.includes("monitoring · governance dashboard") && t.includes("performance by subgroup"));
+
+  console.log("\n── /hospitals landing (reachable by URL; no longer linked from home) ──");
+  await goto(page, "/hospitals");
   t = await body(page);
   ok("hospitals headline", t.includes("stop running pilots that go nowhere"));
   ok("hospitals 3 value props", t.includes("your own verdict") && t.includes("placement & readiness") && t.includes("run it properly"));
@@ -341,9 +385,9 @@ try {
   ok("that dashboard is read-only (no monitoring/drift charts)", appSvgs === 0 && !t.includes("governance dashboard") && !t.includes("drift"));
 
   console.log("\n── LOGIN AS selector re-scopes nav instantly (no reload) ──");
-  await page.evaluate(() => localStorage.setItem("clearpath-role", "hospital"));
+  await signInAs(page, "hospital");
   await goto(page, "/");
-  let nav = await navText(page);
+  nav = await navText(page);
   ok("hospital nav = Home / Inbox / Site readiness / Registry", nav.includes("inbox") && nav.includes("site readiness") && nav.includes("registry") && !nav.includes("my applications") && !nav.includes("submit a tool") && !nav.includes("explore regulatory"));
   // Flip to Vendor via the dropdown — instant, no navigation.
   await clickText(page, "Login as");
@@ -363,10 +407,10 @@ try {
   ok("hospital persona switcher still present under Hospital", (await body(page)).includes("viewing as"));
 
   console.log("\n── REGULATORY redirect guard (every intended spot → clearpath-medtech, new tab) ──");
-  await page.evaluate(() => localStorage.setItem("clearpath-role", "vendor"));
+  await signInAs(page, "vendor");
   await goto(page, "/");
-  const rHome = await regLink(page, "regulatory journey");
-  ok("home section regulatory link", regOk(rHome), rHome ? rHome.href : "MISSING");
+  const rHome = await regLink(page, "start there");
+  ok("home §4 regulatory link", regOk(rHome), rHome ? rHome.href : "MISSING");
   const rNav = await regLink(page, "explore regulatory");
   ok("vendor nav 'Explore regulatory' link", regOk(rNav), rNav ? rNav.href : "MISSING");
   await clickText(page, "Login as");
@@ -379,14 +423,14 @@ try {
   const rCard = await regLink(page, "regulatory on-ramp");
   ok("vendor on-ramp card link", regOk(rCard), rCard ? rCard.href : "MISSING");
   // Hospital nav must NOT carry a regulatory item (redirect is vendor-only + home + dropdown).
-  await page.evaluate(() => localStorage.setItem("clearpath-role", "hospital"));
+  await signInAs(page, "hospital");
   await goto(page, "/");
   nav = await navText(page);
   ok("no regulatory nav item for hospital", !nav.includes("regulatory"));
 
   console.log("\n── FRAMEWORK (methodology) page + home link ──");
   // Home links to the framework (in the how-it-works section), home stays simple.
-  await page.evaluate(() => localStorage.setItem("clearpath-role", "vendor"));
+  await signInAs(page, "vendor");
   await goto(page, "/");
   const fwLink = await page.evaluate(() => {
     const a = [...document.querySelectorAll("a")].find((e) => /see the full framework/i.test(e.textContent));
