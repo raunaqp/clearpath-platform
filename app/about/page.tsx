@@ -5,13 +5,13 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
  * About — built from ClearPath_About_Copy.md. Copy is fixed; this file is
  * presentation only. Section order follows the source document.
  *
- * Two sections in the source are marked [[double brackets]] — decisions Raunaq
- * has to make before this ships — and are deliberately ABSENT rather than
- * stubbed:
- *   · Team — needs names, roles, and a founder/employee/collaborator call.
- *     The source is explicit: ship without it rather than with invented bios.
- *   · Contact — the mailto address is unconfirmed. "Get in touch." therefore
- *     currently has no link under it. That is intentional, not an oversight.
+ * The source marks two sections [[double brackets]] — decisions Raunaq had to
+ * make before this ships:
+ *   · Team — STILL ABSENT. Needs names, roles, and a founder/employee/
+ *     collaborator call. The source is explicit: ship without it rather than
+ *     with invented bios. Do not add placeholder people.
+ *   · Contact — RESOLVED (17 Aug): a single mailto, no form, so there is no
+ *     storage and no DPDP notice to write.
  *
  * Calibration (source §Who we work with): ICMR-NIRDH and ONHS are CONVERSATIONS
  * and PROPOSALS. Do not upgrade the verbs to "partnered with" / "selected by" /
