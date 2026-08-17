@@ -77,6 +77,9 @@ try {
   let t = await body(page);
   ok("hero headline", t.includes("discover, deployment and evaluation platform for digital and ai solutions for hospitals"));
   ok("hero sub-paragraph", t.includes("more ai tools than it can safely evaluate and deploy") && t.includes("without pilot hell"));
+  // DO NOT rename this "Slingshot" — it is the OLD brand name, named here so
+  // the check can prove it never reaches the rendered page. Renaming it to the
+  // current name inverts the guard into a meaningless self-check.
   ok("brand ClearPath (no Slingshot)", t.includes("clearpath") && !t.includes("slingshot"));
   // §2.1 deleted the pilot-death band outright. Assert it STAYS deleted.
   ok("pilot-death band removed", !t.includes("pilots stall and die") && !t.includes("no one owns the tool"));
@@ -276,7 +279,7 @@ try {
   ok("performance / drift / subgroup / alerts panels", t.includes("performance over time") && t.includes("drift") && t.includes("subgroup") && t.includes("alerts feed"));
 
   console.log("\n── REPORT: Generate report downloads a real PDF ──");
-  const DL = "/tmp/slingshot-dl";
+  const DL = "/tmp/clearpath-platform-dl";
   try { rmSync(DL, { recursive: true, force: true }); } catch {}
   mkdirSync(DL, { recursive: true });
   const client = await page.target().createCDPSession();

@@ -1,4 +1,4 @@
-# Slingshot — Build Spec for Claude Code
+# clearpath-platform — Build Spec for Claude Code
 ### The full three-journey product, fully mocked (no API calls)
 
 **How to use this file.** Paste it into Claude Code inside (or beside) the existing ClearPath repo. Build with the ClearPath stack and conventions — reuse the brand tokens, engine-module structure, Zod schemas, and the `softenCertainty` post-processor already defined in the clearpath skill. This spec defines *what* to build and the *mock data*; the ClearPath skill defines *how* to write it.
@@ -9,7 +9,7 @@
 
 ## 1. The product and the three journeys
 
-Slingshot is a pre-deployment evaluation, placement, and deployment layer for clinical-AI and digital-health tools. One app, one role switcher, three connected journeys:
+clearpath-platform is a pre-deployment evaluation, placement, and deployment layer for clinical-AI and digital-health tools. One app, one role switcher, three connected journeys:
 
 | Journey | Role | Purpose | Produces |
 |---|---|---|---|
@@ -188,7 +188,7 @@ Concise competitive read so the build borrows the right patterns and leans into 
 | **CHAI** (standards) | Model cards, assurance labs, registry, governance playbooks | Model-card / "nutrition label" registry concept; assurance neutrality | An operational tool, not just a standard; India; deployment lifecycle |
 | **CTMS** (Veeva, Medidata, RealTime) | Trial operations + eTMF | eTMF/CTMS workflow patterns for Journey C | Lightweight & pilot-grade; built-in evaluation scorecard; serves AI pilots *and* trials |
 
-**Our four defensible moves, which the UI should make obvious:** (1) **placement** — where in the system a tool belongs, which nobody else outputs; (2) **"NOT YET with conditions"** — coaching, not just filtering; (3) **site-readiness + tier 2/3 network** — unbuilt elsewhere; (4) **two-sided** — ClearPath (vendor) feeding Slingshot (buyer), India-native throughout.
+**Our four defensible moves, which the UI should make obvious:** (1) **placement** — where in the system a tool belongs, which nobody else outputs; (2) **"NOT YET with conditions"** — coaching, not just filtering; (3) **site-readiness + tier 2/3 network** — unbuilt elsewhere; (4) **two-sided** — ClearPath (vendor) feeding clearpath-platform (buyer), India-native throughout.
 
 ---
 
