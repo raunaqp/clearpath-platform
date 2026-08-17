@@ -10,6 +10,8 @@ import { REGULATORY_URL } from "@/lib/links";
 import { ProductPreview } from "@/components/home/ProductPreview";
 import { SiteReadinessDemo } from "@/components/home/SiteReadinessDemo";
 import { MonitoringDemo } from "@/components/home/MonitoringDemo";
+import { DirectoryDemo } from "@/components/home/DirectoryDemo";
+import { AssessDemo } from "@/components/home/AssessDemo";
 import { cn } from "@/lib/utils";
 
 /**
@@ -19,10 +21,9 @@ import { cn } from "@/lib/utils";
  *
  * Not yet built, and deliberately absent rather than faked:
  *   §2.4 problem statement — copy is still TBD (open question 4).
- *   §3 demo boxes — each accordion item is meant to carry a live demo of that
- *       step, rendered from the real product component. Copy is in place; the
- *       demo column is not, and no mock UI stands in for it (brief §3: "Don't
- *       build new mock UI for these boxes").
+ *
+ * All four §3 demo boxes render a real product component, never a mock or a
+ * screenshot (brief §3: "Don't build new mock UI for these boxes").
  */
 
 /** [exact] — brief §2.2. All three are entry points with identical affordance. */
@@ -184,19 +185,9 @@ type Item = {
 };
 
 /**
- * Two of the four steps have NO demo, and that is deliberate (brief §3: "If a
- * step has no component to show, say so rather than inventing one"):
- *
- *   §3.1 Discover and compare — the closest view is the marketplace directory,
- *        but its table is written inline inside `app/registry/page.tsx`
- *        (~lines 126–200). There is no reusable component to render. Showing it
- *        here needs that table extracted into `components/registry/` first.
- *   §3.4 Audit trail and scorecard — same shape. The "Assess tool applications"
- *        view lives inline in `app/hospital/page.tsx`, and its row renderer
- *        `ApplicationRow` is a private local function in that file.
- *
- * The screenshot fallback isn't available either: the two PNGs the brief names
- * are not in this repo. Rather than build mock UI, these two ship copy-only.
+ * All four steps now show a live product component. None of these are mocks or
+ * screenshots — each is the same component the product renders, wired to the
+ * same fixtures, so the demos stay true as the product changes.
  */
 const HOSPITAL_ITEMS: Item[] = [
   {
@@ -233,6 +224,12 @@ const HOSPITAL_ITEMS: Item[] = [
         </ul>
       </div>
     ),
+    demo: {
+      label: "Marketplace directory · assessed tools",
+      height: 350,
+      scale: 0.5,
+      node: <DirectoryDemo />,
+    },
   },
   {
     id: "readiness",
@@ -305,6 +302,12 @@ const HOSPITAL_ITEMS: Item[] = [
         </div>
       </div>
     ),
+    demo: {
+      label: "Assess tool applications · verdicts",
+      height: 350,
+      scale: 0.62,
+      node: <AssessDemo />,
+    },
   },
 ];
 
