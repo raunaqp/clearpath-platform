@@ -393,9 +393,18 @@ function ForInnovators() {
           Start there <ArrowUpRight className="h-3.5 w-3.5 text-[#BA7517]" />
         </a>
       </p>
-      <Link href="/vendors" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
-        For innovators <ArrowRight className="h-4 w-4" />
-      </Link>
+      {/* Mirrors §3.4's "How we built the framework →": each half of the site
+          gets a page explaining the method behind it. /research is reachable
+          from here and from /framework — deliberately NOT in the public nav,
+          which stays Home · About · Framework. */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <Link href="/vendors" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
+          For innovators <ArrowRight className="h-4 w-4" />
+        </Link>
+        <Link href="/research" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
+          How we built the regulatory tool <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     </section>
   );
 }

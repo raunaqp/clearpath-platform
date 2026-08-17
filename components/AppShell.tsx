@@ -54,9 +54,17 @@ const NAV: Record<"vendor" | "hospital", NavItem[]> = {
   ],
 };
 
-/** The three public pages. Everything else is product. */
+/**
+ * The public pages. Everything else is product.
+ *
+ * NOTE the deliberate asymmetry with PUBLIC_NAV above: /research is a public
+ * PAGE but not a public NAV ITEM. The approved IA is three items (Home · About
+ * · Framework), and /research is reached from home §4 and /framework instead.
+ * It still has to be listed here — otherwise a signed-out visitor following
+ * either of those links lands on a marketing page wearing the product header.
+ */
 function isPublicRoute(pathname: string): boolean {
-  return pathname === "/" || pathname === "/about" || pathname.startsWith("/framework");
+  return pathname === "/" || pathname === "/about" || pathname.startsWith("/framework") || pathname.startsWith("/research");
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {

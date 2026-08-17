@@ -67,7 +67,9 @@ try {
   console.log("\n── PUBLIC header: Home · About · Framework + Login ──");
   await goto(page, "/");
   let nav = await navText(page);
-  ok("public nav = Home / About / Framework only", nav.includes("home") && nav.includes("about") && nav.includes("framework") && !nav.includes("inbox") && !nav.includes("registry") && !nav.includes("site readiness") && !nav.includes("my applications"));
+  // "research" is in the exclusion list on purpose: /research ships reachable
+  // from home §4 and /framework, but the approved public IA stays three items.
+  ok("public nav = Home / About / Framework only", nav.includes("home") && nav.includes("about") && nav.includes("framework") && !nav.includes("inbox") && !nav.includes("registry") && !nav.includes("site readiness") && !nav.includes("my applications") && !nav.includes("research"));
   ok("Login button (not the product 'Login as')", (await body(page)).includes("login"));
   ok("/about resolves (not a 404)", (await page.evaluate(async () => (await fetch("/about")).status)) === 200);
 
@@ -102,19 +104,50 @@ try {
   ok("§3 heading", t.includes("stop running pilots that go nowhere"));
   ok("four item headers visible", t.includes("discover and compare") && t.includes("check your site readiness") && t.includes("deploy and test") && t.includes("audit trail and scorecard"));
   ok("collapsed by default (no panel copy showing)", !t.includes("via india's first vendor-neutral ai marketplace"));
+  // Each of the four demos wires a REAL product component to the mock api, so
+  // every box arrives after simulated latency — waitText each one, never sleep
+  // and hope. The assertions pair the frame's caption with content only that
+  // component renders, so swapping in a mock would fail the check.
   await clickText(page, "Discover and compare");
   await sleep(300);
   t = await body(page);
   ok("expands on click", t.includes("via india's first vendor-neutral ai marketplace"));
-  await clickText(page, "Deploy and test");
+  // §3.1 — DirectoryDemo → the real <RegistryTable>. "cdsco class" is a column
+  // header that appears nowhere else on home, so it can only come from the table.
+  const demo1 = await waitText(page, "cdsco class");
+  t = await body(page);
+  ok("§3.1 demo renders the real registry table", demo1 && t.includes("marketplace directory · assessed tools") && t.includes("cdsco class"));
+
+  // §3.2 — SiteReadinessDemo → the real <SiteReadinessPanel>, read-only, seeded
+  // from the Northvale fixture. All six domain labels must be present: the box
+  // is captioned "six domains" and has to actually show six.
+  await clickText(page, "Check your site readiness");
   await sleep(400);
   t = await body(page);
   ok("one open at a time (first item closed)", !t.includes("via india's first vendor-neutral ai marketplace"));
-  // The demo wires the real component to the mock api, so it arrives after the
-  // simulated latency (getDeployment → getMonitoring). Wait for it, don't guess.
+  const demo2 = await waitText(page, "governance & ethics");
+  t = await body(page);
+  ok("§3.2 demo renders the real site-readiness panel (all six domains)", demo2 && t.includes("site readiness · six domains") && t.includes("site grade") && t.includes("governance & ethics") && t.includes("people & training") && t.includes("infrastructure & it") && t.includes("data & documentation") && t.includes("regulatory & quality") && t.includes("patient access"));
+
+  // §3.3 — MonitoringDemo → the real monitoring dashboard.
+  await clickText(page, "Deploy and test");
+  await sleep(400);
   const demoUp = await waitText(page, "drift — data & prediction");
   t = await body(page);
   ok("§3.3 demo renders the real monitoring dashboard", demoUp && t.includes("monitoring · governance dashboard") && t.includes("performance by subgroup"));
+
+  // §3.4 — AssessDemo → the real <ApplicationList>, grouped by category. The
+  // fixture spans several categories, so "screening" proves the grouping renders
+  // rather than a single ungrouped row.
+  await clickText(page, "Audit trail and scorecard");
+  await sleep(400);
+  // Wait on CONTENT, never on the frame's caption: ProductPreview renders its
+  // label immediately while the spinner is still up, so waiting on the label
+  // returns before the data lands. This demo is the slowest of the four — it
+  // resolves a tool + readiness card per submission — hence the longer timeout.
+  const demo4 = await waitText(page, "cerviai", 20000);
+  t = await body(page);
+  ok("§3.4 demo renders the real application list", demo4 && t.includes("assess tool applications · verdicts") && t.includes("screening") && t.includes("cerviai"));
 
   console.log("\n── /hospitals landing (reachable by URL; no longer linked from home) ──");
   await goto(page, "/hospitals");
@@ -453,6 +486,74 @@ try {
   ok("sample report: 'Conditionally deployable' + dimension averages (illustrative)", t.includes("conditionally deployable") && t.includes("scaffolded programme") && t.includes("illustrative") && t.includes("2.4") && t.includes("1.6"));
   ok("openness line: open, 3 tools / 8 districts / 75,000+", t.includes("open and practitioner-led") && t.includes("8 districts") && t.includes("75,000"));
   ok("D2 buyer-conditional split (public procurement vs private investment case)", t.includes("buyer-conditional") && t.includes("state / government procurement") && t.includes("private-hospital investment-case") && t.includes("roi / payback") && t.includes("liability & indemnity"));
+
+  console.log("\n── RESEARCH (regulatory benchmark) page + entry points ──");
+  // Sign OUT first: /research is a public marketing page, and the header it
+  // wears signed-out is the actual regression risk (a public page is only
+  // "public" to the shell if isPublicRoute knows about it).
+  await page.evaluate(() => localStorage.clear());
+  // Reachable from home §4 and /framework, never from the public nav.
+  await goto(page, "/");
+  const rsLink = await page.evaluate(() => {
+    const a = [...document.querySelectorAll("a")].find((e) => /how we built the regulatory tool/i.test(e.textContent));
+    return a ? a.getAttribute("href") : null;
+  });
+  ok("home §4 'How we built the regulatory tool' → /research", rsLink === "/research", rsLink ?? "MISSING");
+  const fwToResearch = await page.evaluate(async () => {
+    const r = await fetch("/framework");
+    const html = await r.text();
+    return /href="\/research"/.test(html);
+  });
+  ok("/framework cross-links to /research", fwToResearch);
+
+  await goto(page, "/research");
+  ok("/research resolves (not a 404)", (await page.evaluate(async () => (await fetch("/research")).status)) === 200);
+  await waitText(page, "ceiling of 0.523");
+  t = await body(page);
+  ok("hero: eyebrow + the 'fails in the direction that matters' headline", t.includes("research") && t.includes("classify a medical device") && t.includes("fails in the direction that matters"));
+  ok("§question: six models, name + intended use, 2,395 devices [C1]", t.includes("six models") && t.includes("intended use") && t.includes("2,395 devices"));
+
+  // Every figure below must trace to a claim in research/paper/results_claims.md.
+  ok("§result: 0.523 ceiling + 0.354–0.523 range [C1]", t.includes("0.523") && t.includes("0.354"));
+  // C1 REQUIRES accuracy + weighted-F1 alongside macro-F1, and the class weighting.
+  ok("§result: accuracy + weighted-F1 reported alongside, with weighting stated [C1]", t.includes("54.5% accuracy") && t.includes("weighted-f1 of 0.545") && t.includes("6.8%") && t.includes("42.5%"));
+  ok("§result: panel majority is WORSE (0.490) + 288 unresolved ties [C2]", t.includes("0.490") && t.includes("288 of the 2,395") && t.includes("worse"));
+  // The callout — the only thing on the page allowed to compete with 0.523.
+  ok("callout: 58 devices, ≥4 of 6 agreeing on Class C, none reaching D [C6]", t.includes("58 devices") && t.includes("four of the six models") && t.includes("not one of those 58"));
+  ok("gradient: 0.0 / 9.3 / 29.3 / 50.5 by true class [C3]", t.includes("0.0") && t.includes("9.3") && t.includes("29.3") && t.includes("50.5"));
+  // C3 MANDATES the structural caveat — without it the 0.0% reads as a finding.
+  ok("gradient: states Class A 0.0% is STRUCTURAL, not a result [C3]", t.includes("cannot be under-classified by construction") && t.includes("structural"));
+  ok("all 494 Class-D errors are under-classifications [C5]", t.includes("494"));
+  // C4 forbids presenting the same event three ways — assert the one form used.
+  ok("40 of 163 Class-D devices get no Class-D vote [C4]", t.includes("40 of the 163"));
+  ok("C is the attractor: 2,132 of 6,102 true-B decisions → C, 34.9% [C7]", t.includes("2,132 of 6,102") && t.includes("34.9%"));
+  ok("bias not variance: 92.2% self-consistency against a 0.523 ceiling [C8]", t.includes("92.2%"));
+  ok("§design brief: the three principles", t.includes("never sound more certain than the regulator") && t.includes("decompose before classifying") && t.includes("keep a human in the expensive part"));
+  ok("§scope: nine bodies + CDSCO pilot + not regulatory advice", t.includes("nine regulatory bodies") && t.includes("cdsco is the pilot regulator") && t.includes("not regulatory advice"));
+  ok("§limits: internal benchmark, oracle ≠ ground truth", t.includes("internal benchmark, not a peer-reviewed finding") && t.includes("not as adjudicated ground truth"));
+
+  // Register guardrails — these must STAY false. Each maps to a rule in the
+  // claims register's "Claims explicitly forbidden" table or its calibration notes.
+  ok("models are NOT named (META-1: aliases mutable, comparison not defensible)", !t.includes("gpt-4o") && !t.includes("gemini") && !t.includes("claude") && !t.includes("qwen") && !t.includes("llama") && !t.includes("deepseek"));
+  ok("no majority-class-baseline claim (cut: unregistered AND false)", !t.includes("barely above") && !t.includes("guessed the same class"));
+  ok("no A→B claim (cut: real in the CSV, absent from the register)", !t.includes("class a devices get pushed up"));
+  ok("'life-supporting' removed from every Class D reference", !t.includes("life-supporting"));
+  ok("no forbidden phrasings (held-out / breaks 31% / 35% flip)", !t.includes("held-out") && !t.includes("breaks 31%") && !t.includes("35% of"));
+  ok("no claim any REAL device is misclassified (oracle framing held)", t.includes("reference list places") && !t.includes("devices are misclassified"));
+
+  const rsReg = await regLink(page, "try the regulatory tool");
+  ok("research → regulatory tool, new tab", regOk(rsReg), rsReg ? rsReg.href : "MISSING");
+  const rsFw = await page.evaluate(() => {
+    const a = [...document.querySelectorAll("a")].find((e) => /see the deployment framework/i.test(e.textContent));
+    return a ? a.getAttribute("href") : null;
+  });
+  ok("research cross-links back to /framework", rsFw === "/framework", rsFw ?? "MISSING");
+  // /research must wear the PUBLIC header (Home · About · Framework + Login) —
+  // and must NOT add itself as a fourth nav item. Both halves matter: the first
+  // catches isPublicRoute forgetting the route, the second catches the IA drift.
+  const rsNav = await navText(page);
+  ok("/research wears the PUBLIC header, signed out", rsNav.includes("home") && rsNav.includes("about") && rsNav.includes("framework") && !rsNav.includes("inbox") && !rsNav.includes("registry") && !rsNav.includes("my applications"));
+  ok("Research still NOT in the nav while ON /research", !rsNav.includes("research"));
 
   console.log(`\n${failures === 0 ? "BROWSER VERIFY PASSED" : `${failures} CHECK(S) FAILED`}`);
 } catch (e) {

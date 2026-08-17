@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 /**
  * Framework (methodology) page — DESCRIBES the authoritative PDMF standard.
@@ -284,6 +284,23 @@ export default function FrameworkPage() {
           built toward. The live tool runs a focused subset today — this page describes the standard,
           not the current question count.
         </p>
+      </section>
+
+      {/* Cross-link to /research. The PDMF is the deployment standard; the
+          research page is the regulatory engine. Same method, different
+          question — and /research is reachable only from here and home §4,
+          never from the public nav. */}
+      <section className="rounded-2xl border border-line bg-bg-card px-6 py-6">
+        <h2 className="font-serif text-xl text-ink">How we built the regulatory engine.</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-2">
+          The PDMF answers whether a tool is ready to deploy. A separate question — what
+          regulatory class a device is in, and whether a language model can be trusted to
+          say — got the same treatment: we measured the naive approach first, and built
+          around where it failed.
+        </p>
+        <Link href="/research" className="mt-4 inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
+          Read the benchmark <ArrowRight className="h-4 w-4" />
+        </Link>
       </section>
     </div>
   );
