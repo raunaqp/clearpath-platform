@@ -478,7 +478,14 @@ try {
   t = await body(page);
   ok("intro: practitioner-led standard + EdTech Tulna model", t.includes("practitioner-led") && t.includes("edtech tulna"));
   ok("4 dimensions with names + weights (31/14/33/34)", t.includes("clinical, scientific & regulatory quality") && t.includes("system fit") && t.includes("user experience & workflow fit") && t.includes("technology, data governance & usability") && t.includes("31") && t.includes("14") && t.includes("33") && t.includes("34"));
-  ok("totals: 4 dimensions · 17 clusters · 112 items", t.includes("17 clusters") && t.includes("112") && t.includes("assessment items"));
+  // Cluster count is buyer-conditional (D2 is): 17 public / 19 private, 112
+  // items, 4 dimensions. A bare "19" would contradict the page, which lists the
+  // 17 public clusters by name — so assert the pair is shown as a pair.
+  ok("totals: 4 dimensions · 17/19 clusters (public/private) · 112 items", t.includes("17 / 19") && t.includes("public / private") && t.includes("112") && t.includes("assessment items") && t.includes("dimensions"));
+  // The spelled-out heading is a separate failure mode from the numeral chips:
+  // a find-and-replace on "17" misses it, so it gets its own assertion.
+  ok("spelled-out heading carries BOTH counts (seventeen / nineteen)", t.includes("four dimensions, seventeen clusters") && t.includes("nineteen for a private buyer"));
+  ok("body explains the 17→19 swap (D2 public clusters → private items)", t.includes("public-procurement path") && t.includes("investment-case items"));
   // Spot-check clusters across all four dimensions + a distinctive item count.
   ok("clusters present (D1.C Clinical Performance & Safety, D4.F Data Privacy…)", t.includes("d1.c") && t.includes("clinical performance & safety") && t.includes("d4.f") && t.includes("data privacy, storage & security") && t.includes("14 items"));
   ok("maturity ladder 0–3 (absent → system-owned, gate-blocking)", t.includes("absent / fails") && t.includes("works via a workaround") && t.includes("adequate with support") && t.includes("system-owned") && t.includes("deployment-blocking"));

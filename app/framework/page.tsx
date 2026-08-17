@@ -99,6 +99,22 @@ const SAMPLE = [
 
 const TOTAL_QUESTIONS = DIMENSIONS.reduce((n, d) => n + d.clusters.reduce((m, c) => m + c.count, 0), 0);
 
+/**
+ * Cluster counts are BUYER-CONDITIONAL, because D2 is. The public-procurement
+ * variant has 17 clusters; a private buyer swaps D2's 3 public clusters for its
+ * 5 investment-case items, giving 19.
+ *
+ * Both are derived, never typed as literals — the page renders the 17 public
+ * clusters by name, so a hand-written total can silently disagree with what is
+ * actually on screen. The item count (112) is the public path and does not vary:
+ * the private D2 items are not individually counted in the standard.
+ */
+const PUBLIC_CLUSTERS = DIMENSIONS.reduce((n, d) => n + d.clusters.length, 0);
+const PRIVATE_CLUSTERS = DIMENSIONS.reduce(
+  (n, d) => n + (d.buyerConditional ? d.buyerConditional.private.length : d.clusters.length),
+  0
+);
+
 export default function FrameworkPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-16 pb-10">
@@ -121,7 +137,7 @@ export default function FrameworkPage() {
           Tulna, translated to clinical AI.
         </p>
         <div className="flex flex-wrap gap-2 text-sm">
-          {[["4", "dimensions"], ["17", "clusters"], [`${TOTAL_QUESTIONS}`, "assessment items"], ["0–3", "maturity scale"]].map(([n, l]) => (
+          {[["4", "dimensions"], [`${PUBLIC_CLUSTERS} / ${PRIVATE_CLUSTERS}`, "clusters · public / private"], [`${TOTAL_QUESTIONS}`, "assessment items"], ["0–3", "maturity scale"]].map(([n, l]) => (
             <span key={l} className="inline-flex items-baseline gap-1.5 rounded-full border border-line bg-bg-card px-3 py-1">
               <span className="font-serif text-base text-teal-deep">{n}</span>
               <span className="text-muted">{l}</span>
@@ -133,11 +149,17 @@ export default function FrameworkPage() {
       {/* The four dimensions + their clusters */}
       <section className="space-y-4">
         <div className="space-y-1">
-          <h2 className="font-serif text-2xl text-ink">Four dimensions, seventeen clusters.</h2>
-          <p className="text-sm text-muted">
+          {/* Spelled out, so it has to be edited by hand when the counts change —
+              a find-and-replace on "17" sails straight past it. */}
+          <h2 className="font-serif text-2xl text-ink">
+            Four dimensions, seventeen clusters — nineteen for a private buyer.
+          </h2>
+          <p className="max-w-3xl text-sm text-muted">
             Every assessment item carries equal weight, so a dimension's weight is simply its share
             of the {TOTAL_QUESTIONS} items. Workflow and data governance count as much as clinical
-            quality.
+            quality. The {PUBLIC_CLUSTERS} clusters named below are the public-procurement path; a
+            private buyer swaps D2's three clusters for five investment-case items, making{" "}
+            {PRIVATE_CLUSTERS}.
           </p>
         </div>
 
