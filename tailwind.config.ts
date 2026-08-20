@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Slingshot brand system — the ClearPath "Teal Trust" palette (BUILD_SPEC §10),
+ * clearpath-platform brand system — the ClearPath "Teal Trust" palette (BUILD_SPEC §10),
  * carried over verbatim so the two products read as one family. The only
  * addition is the `green` verdict token pair the spec calls out for the
  * DEPLOY verdict (ClearPath never needed it).

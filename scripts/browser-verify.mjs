@@ -46,6 +46,15 @@ async function regLink(page, matchText) {
   }, matchText);
 }
 const regOk = (r) => !!r && r.href.includes("clearpath-medtech.vercel.app") && r.target === "_blank" && /noopener/.test(r.rel);
+// Site restructure: the PUBLIC header (Home · About · Framework + Login) shows
+// until a persona is picked. Any assertion about the PRODUCT nav therefore has
+// to set the signed-in flag as well as the role — setting the role alone now
+// leaves you on the public header.
+const signInAs = (page, role) =>
+  page.evaluate((role) => {
+    localStorage.setItem("clearpath-role", role);
+    localStorage.setItem("clearpath-signed-in", "true");
+  }, role);
 
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox"] });
 const page = await browser.newPage();
@@ -55,25 +64,96 @@ try {
   await page.goto(BASE + "/", { waitUntil: "networkidle2" });
   await page.evaluate(() => { localStorage.clear(); });
 
-  console.log("\n── HOME landing: hero, problem, doors, how-it-works, trust ──");
+  console.log("\n── PUBLIC header: Home · About · Framework + Login ──");
   await goto(page, "/");
+  let nav = await navText(page);
+  // "research" is in the exclusion list on purpose: /research ships reachable
+  // from home §4 and /framework, but the approved public IA stays three items.
+  ok("public nav = Home / About / Framework only", nav.includes("home") && nav.includes("about") && nav.includes("framework") && !nav.includes("inbox") && !nav.includes("registry") && !nav.includes("site readiness") && !nav.includes("my applications") && !nav.includes("research"));
+  ok("Login button (not the product 'Login as')", (await body(page)).includes("login"));
+  ok("/about resolves (not a 404)", (await page.evaluate(async () => (await fetch("/about")).status)) === 200);
+
+  console.log("\n── HOME landing: hero, entry cards, marketplace band, how-it-works, trust ──");
   let t = await body(page);
-  ok("hero headline", t.includes("clinical ai, from validated to safely deployed"));
+  ok("hero headline", t.includes("discover, deployment and evaluation platform for digital and ai solutions for hospitals"));
+  ok("hero sub-paragraph", t.includes("more ai tools than it can safely evaluate and deploy") && t.includes("without pilot hell"));
+  // DO NOT rename this "Slingshot" — it is the OLD brand name, named here so
+  // the check can prove it never reaches the rendered page. Renaming it to the
+  // current name inverts the guard into a meaningless self-check.
   ok("brand ClearPath (no Slingshot)", t.includes("clearpath") && !t.includes("slingshot"));
-  ok("problem band (pilot hell, 3)", t.includes("pilots stall and die") && t.includes("no one owns the tool") && t.includes("actually host it"));
-  ok("three doors present", t.includes("for hospitals") && t.includes("for vendors") && t.includes("registry") && t.includes("evaluate, place & run") && t.includes("get your tool evaluated"));
+  // §2.1 deleted the pilot-death band outright. Assert it STAYS deleted.
+  ok("pilot-death band removed", !t.includes("pilots stall and die") && !t.includes("no one owns the tool"));
+  ok("three entry cards present", t.includes("for hospitals") && t.includes("for innovators") && t.includes("the marketplace") && t.includes("discover, evaluate and deploy tools safely") && t.includes("get your product evaluated"));
+  ok("marketplace supporting lines (§2.3)", t.includes("get connected to hospitals and innovators based on your need") && t.includes("a public directory of clinically assessed tools and digitally ready hospitals"));
   ok("how it works (assess/place/run/prove)", t.includes("assess") && t.includes("place") && t.includes("run") && t.includes("prove"));
   ok("trust line (CDSCO/DPDP/ABDM-aware)", t.includes("abdm-aware") && t.includes("calibrated language"));
-  const homeReg = await page.evaluate(() => {
-    const a = [...document.querySelectorAll("a")].find((e) => /regulatory journey/i.test(e.textContent));
-    return a ? { href: a.href, target: a.target, rel: a.rel } : null;
-  });
-  ok("home quiet regulatory on-ramp → clearpath-medtech, new tab", !!homeReg && homeReg.href.includes("clearpath-medtech.vercel.app") && homeReg.target === "_blank" && /noopener/.test(homeReg.rel), homeReg ? homeReg.href : "none");
-  await clickText(page, "Enter");
-  await page.waitForFunction(() => location.pathname === "/hospitals", { timeout: 6000 }).catch(() => {});
-  ok("a door routes correctly (/hospitals)", (await page.evaluate(() => location.pathname)) === "/hospitals");
+  // §4 on-ramp: the link text is now "Start there", not "regulatory journey".
+  const homeReg = await regLink(page, "start there");
+  ok("home regulatory on-ramp → clearpath-medtech, new tab", regOk(homeReg), homeReg ? homeReg.href : "MISSING");
+  // Entry cards replace the old three doors: two anchor into this page, the
+  // marketplace card routes to the directory. All three must be real links.
+  const cards = await page.evaluate(() => ({
+    hospitals: !!document.querySelector('a[href="#for-hospitals"]'),
+    innovators: !!document.querySelector('a[href="#for-innovators"]'),
+    marketplace: !!document.querySelector('a[href="/registry"]'),
+    targets: !!document.querySelector("#for-hospitals") && !!document.querySelector("#for-innovators"),
+  }));
+  ok("entry card → For hospitals anchors into §3", cards.hospitals);
+  ok("entry card → For innovators anchors into §4", cards.innovators);
+  ok("entry card → The marketplace routes to the directory", cards.marketplace);
+  ok("both in-page anchor targets exist", cards.targets);
 
-  console.log("\n── /hospitals landing ──");
+  console.log("\n── §3 hospital accordion: collapsed by default, one open at a time ──");
+  ok("§3 heading", t.includes("stop running pilots that go nowhere"));
+  ok("four item headers visible", t.includes("discover and compare") && t.includes("check your site readiness") && t.includes("deploy and test") && t.includes("audit trail and scorecard"));
+  ok("collapsed by default (no panel copy showing)", !t.includes("via india's first vendor-neutral ai marketplace"));
+  // Each of the four demos wires a REAL product component to the mock api, so
+  // every box arrives after simulated latency — waitText each one, never sleep
+  // and hope. The assertions pair the frame's caption with content only that
+  // component renders, so swapping in a mock would fail the check.
+  await clickText(page, "Discover and compare");
+  await sleep(300);
+  t = await body(page);
+  ok("expands on click", t.includes("via india's first vendor-neutral ai marketplace"));
+  // §3.1 — DirectoryDemo → the real <RegistryTable>. "cdsco class" is a column
+  // header that appears nowhere else on home, so it can only come from the table.
+  const demo1 = await waitText(page, "cdsco class");
+  t = await body(page);
+  ok("§3.1 demo renders the real registry table", demo1 && t.includes("marketplace directory · assessed tools") && t.includes("cdsco class"));
+
+  // §3.2 — SiteReadinessDemo → the real <SiteReadinessPanel>, read-only, seeded
+  // from the Northvale fixture. All six domain labels must be present: the box
+  // is captioned "six domains" and has to actually show six.
+  await clickText(page, "Check your site readiness");
+  await sleep(400);
+  t = await body(page);
+  ok("one open at a time (first item closed)", !t.includes("via india's first vendor-neutral ai marketplace"));
+  const demo2 = await waitText(page, "governance & ethics");
+  t = await body(page);
+  ok("§3.2 demo renders the real site-readiness panel (all six domains)", demo2 && t.includes("site readiness · six domains") && t.includes("site grade") && t.includes("governance & ethics") && t.includes("people & training") && t.includes("infrastructure & it") && t.includes("data & documentation") && t.includes("regulatory & quality") && t.includes("patient access"));
+
+  // §3.3 — MonitoringDemo → the real monitoring dashboard.
+  await clickText(page, "Deploy and test");
+  await sleep(400);
+  const demoUp = await waitText(page, "drift — data & prediction");
+  t = await body(page);
+  ok("§3.3 demo renders the real monitoring dashboard", demoUp && t.includes("monitoring · governance dashboard") && t.includes("performance by subgroup"));
+
+  // §3.4 — AssessDemo → the real <ApplicationList>, grouped by category. The
+  // fixture spans several categories, so "screening" proves the grouping renders
+  // rather than a single ungrouped row.
+  await clickText(page, "Audit trail and scorecard");
+  await sleep(400);
+  // Wait on CONTENT, never on the frame's caption: ProductPreview renders its
+  // label immediately while the spinner is still up, so waiting on the label
+  // returns before the data lands. This demo is the slowest of the four — it
+  // resolves a tool + readiness card per submission — hence the longer timeout.
+  const demo4 = await waitText(page, "cerviai", 20000);
+  t = await body(page);
+  ok("§3.4 demo renders the real application list", demo4 && t.includes("assess tool applications · verdicts") && t.includes("screening") && t.includes("cerviai"));
+
+  console.log("\n── /hospitals landing (reachable by URL; no longer linked from home) ──");
+  await goto(page, "/hospitals");
   t = await body(page);
   ok("hospitals headline", t.includes("stop running pilots that go nowhere"));
   ok("hospitals 3 value props", t.includes("your own verdict") && t.includes("placement & readiness") && t.includes("run it properly"));
@@ -199,7 +279,7 @@ try {
   ok("performance / drift / subgroup / alerts panels", t.includes("performance over time") && t.includes("drift") && t.includes("subgroup") && t.includes("alerts feed"));
 
   console.log("\n── REPORT: Generate report downloads a real PDF ──");
-  const DL = "/tmp/slingshot-dl";
+  const DL = "/tmp/clearpath-platform-dl";
   try { rmSync(DL, { recursive: true, force: true }); } catch {}
   mkdirSync(DL, { recursive: true });
   const client = await page.target().createCDPSession();
@@ -341,9 +421,9 @@ try {
   ok("that dashboard is read-only (no monitoring/drift charts)", appSvgs === 0 && !t.includes("governance dashboard") && !t.includes("drift"));
 
   console.log("\n── LOGIN AS selector re-scopes nav instantly (no reload) ──");
-  await page.evaluate(() => localStorage.setItem("clearpath-role", "hospital"));
+  await signInAs(page, "hospital");
   await goto(page, "/");
-  let nav = await navText(page);
+  nav = await navText(page);
   ok("hospital nav = Home / Inbox / Site readiness / Registry", nav.includes("inbox") && nav.includes("site readiness") && nav.includes("registry") && !nav.includes("my applications") && !nav.includes("submit a tool") && !nav.includes("explore regulatory"));
   // Flip to Vendor via the dropdown — instant, no navigation.
   await clickText(page, "Login as");
@@ -363,10 +443,10 @@ try {
   ok("hospital persona switcher still present under Hospital", (await body(page)).includes("viewing as"));
 
   console.log("\n── REGULATORY redirect guard (every intended spot → clearpath-medtech, new tab) ──");
-  await page.evaluate(() => localStorage.setItem("clearpath-role", "vendor"));
+  await signInAs(page, "vendor");
   await goto(page, "/");
-  const rHome = await regLink(page, "regulatory journey");
-  ok("home section regulatory link", regOk(rHome), rHome ? rHome.href : "MISSING");
+  const rHome = await regLink(page, "start there");
+  ok("home §4 regulatory link", regOk(rHome), rHome ? rHome.href : "MISSING");
   const rNav = await regLink(page, "explore regulatory");
   ok("vendor nav 'Explore regulatory' link", regOk(rNav), rNav ? rNav.href : "MISSING");
   await clickText(page, "Login as");
@@ -379,14 +459,14 @@ try {
   const rCard = await regLink(page, "regulatory on-ramp");
   ok("vendor on-ramp card link", regOk(rCard), rCard ? rCard.href : "MISSING");
   // Hospital nav must NOT carry a regulatory item (redirect is vendor-only + home + dropdown).
-  await page.evaluate(() => localStorage.setItem("clearpath-role", "hospital"));
+  await signInAs(page, "hospital");
   await goto(page, "/");
   nav = await navText(page);
   ok("no regulatory nav item for hospital", !nav.includes("regulatory"));
 
   console.log("\n── FRAMEWORK (methodology) page + home link ──");
   // Home links to the framework (in the how-it-works section), home stays simple.
-  await page.evaluate(() => localStorage.setItem("clearpath-role", "vendor"));
+  await signInAs(page, "vendor");
   await goto(page, "/");
   const fwLink = await page.evaluate(() => {
     const a = [...document.querySelectorAll("a")].find((e) => /see the full framework/i.test(e.textContent));
@@ -401,14 +481,104 @@ try {
   t = await body(page);
   ok("intro: practitioner-led standard + EdTech Tulna model", t.includes("practitioner-led") && t.includes("edtech tulna"));
   ok("4 dimensions with names + weights (31/14/33/34)", t.includes("clinical, scientific & regulatory quality") && t.includes("system fit") && t.includes("user experience & workflow fit") && t.includes("technology, data governance & usability") && t.includes("31") && t.includes("14") && t.includes("33") && t.includes("34"));
-  ok("totals: 4 dimensions · 17 clusters · 112 items", t.includes("17 clusters") && t.includes("112") && t.includes("assessment items"));
+  // Cluster count is buyer-conditional (D2 is): 17 public / 19 private, 112
+  // items, 4 dimensions. A bare "19" would contradict the page, which lists the
+  // 17 public clusters by name — so assert the pair is shown as a pair.
+  ok("totals: 4 dimensions · 17/19 clusters (public/private) · 112 items", t.includes("17 / 19") && t.includes("public / private") && t.includes("112") && t.includes("assessment items") && t.includes("dimensions"));
+  // The spelled-out heading is a separate failure mode from the numeral chips:
+  // a find-and-replace on "17" misses it, so it gets its own assertion.
+  ok("spelled-out heading carries BOTH counts (seventeen / nineteen)", t.includes("four dimensions, seventeen clusters") && t.includes("nineteen for a private buyer"));
+  ok("body explains the 17→19 swap (D2 public clusters → private items)", t.includes("public-procurement path") && t.includes("investment-case items"));
   // Spot-check clusters across all four dimensions + a distinctive item count.
   ok("clusters present (D1.C Clinical Performance & Safety, D4.F Data Privacy…)", t.includes("d1.c") && t.includes("clinical performance & safety") && t.includes("d4.f") && t.includes("data privacy, storage & security") && t.includes("14 items"));
   ok("maturity ladder 0–3 (absent → system-owned, gate-blocking)", t.includes("absent / fails") && t.includes("works via a workaround") && t.includes("adequate with support") && t.includes("system-owned") && t.includes("deployment-blocking"));
   ok("weighting note: workflow + data weigh as much as evidence", t.includes("outweigh") && t.includes("necessary") && t.includes("not sufficient"));
   ok("sample report: 'Conditionally deployable' + dimension averages (illustrative)", t.includes("conditionally deployable") && t.includes("scaffolded programme") && t.includes("illustrative") && t.includes("2.4") && t.includes("1.6"));
   ok("openness line: open, 3 tools / 8 districts / 75,000+", t.includes("open and practitioner-led") && t.includes("8 districts") && t.includes("75,000"));
+  // The gates↔clusters correspondence claim was FALSE and must stay deleted:
+  // totals match on both buyer paths, per-dimension splits don't (clusters
+  // 4/3/4/6, gates 5/3/4/5). Assert the honest framing, and the absence of the
+  // old one. "focused subset" is the framing to keep.
+  ok("no gates↔clusters correspondence claim", !t.includes("correspond to the") && !t.includes("gates correspond"));
+  ok("honest framing kept: a focused subset, not one-to-one", t.includes("focused subset") && t.includes("does not map onto them one-to-one") && t.includes("the per-dimension split does not"));
+  // Community call (brief §7.4) — kept, per the 17 Aug call on open question 7.
+  ok("community block: all three strands", t.includes("we're building a community for") && t.includes("open data sets") && t.includes("benchmarking existing llms") && t.includes("open call for collaborations"));
+  const commMail = await page.evaluate(() => {
+    const a = [...document.querySelectorAll('a[href^="mailto:"]')].find((e) => /raunaq/i.test(e.href));
+    return a ? a.getAttribute("href") : null;
+  });
+  // A mailto, deliberately — a form would mean storage and a DPDP notice.
+  ok("community contact is a mailto (no form)", commMail === "mailto:raunaq.pradhan@gmail.com", commMail ?? "MISSING");
+  ok("no contact form on /framework", (await page.evaluate(() => document.querySelectorAll("form, input[type=email]").length)) === 0);
   ok("D2 buyer-conditional split (public procurement vs private investment case)", t.includes("buyer-conditional") && t.includes("state / government procurement") && t.includes("private-hospital investment-case") && t.includes("roi / payback") && t.includes("liability & indemnity"));
+
+  console.log("\n── RESEARCH (regulatory benchmark) page + entry points ──");
+  // Sign OUT first: /research is a public marketing page, and the header it
+  // wears signed-out is the actual regression risk (a public page is only
+  // "public" to the shell if isPublicRoute knows about it).
+  await page.evaluate(() => localStorage.clear());
+  // Reachable from home §4 and /framework, never from the public nav.
+  await goto(page, "/");
+  const rsLink = await page.evaluate(() => {
+    const a = [...document.querySelectorAll("a")].find((e) => /how we built the regulatory tool/i.test(e.textContent));
+    return a ? a.getAttribute("href") : null;
+  });
+  ok("home §4 'How we built the regulatory tool' → /research", rsLink === "/research", rsLink ?? "MISSING");
+  const fwToResearch = await page.evaluate(async () => {
+    const r = await fetch("/framework");
+    const html = await r.text();
+    return /href="\/research"/.test(html);
+  });
+  ok("/framework cross-links to /research", fwToResearch);
+
+  await goto(page, "/research");
+  ok("/research resolves (not a 404)", (await page.evaluate(async () => (await fetch("/research")).status)) === 200);
+  await waitText(page, "ceiling of 0.523");
+  t = await body(page);
+  ok("hero: eyebrow + the 'fails in the direction that matters' headline", t.includes("research") && t.includes("classify a medical device") && t.includes("fails in the direction that matters"));
+  ok("§question: six models, name + intended use, 2,395 devices [C1]", t.includes("six models") && t.includes("intended use") && t.includes("2,395 devices"));
+
+  // Every figure below must trace to a claim in research/paper/results_claims.md.
+  ok("§result: 0.523 ceiling + 0.354–0.523 range [C1]", t.includes("0.523") && t.includes("0.354"));
+  // C1 REQUIRES accuracy + weighted-F1 alongside macro-F1, and the class weighting.
+  ok("§result: accuracy + weighted-F1 reported alongside, with weighting stated [C1]", t.includes("54.5% accuracy") && t.includes("weighted-f1 of 0.545") && t.includes("6.8%") && t.includes("42.5%"));
+  ok("§result: panel majority is WORSE (0.490) + 288 unresolved ties [C2]", t.includes("0.490") && t.includes("288 of the 2,395") && t.includes("worse"));
+  // The callout — the only thing on the page allowed to compete with 0.523.
+  ok("callout: 58 devices, ≥4 of 6 agreeing on Class C, none reaching D [C6]", t.includes("58 devices") && t.includes("four of the six models") && t.includes("not one of those 58"));
+  ok("gradient: 0.0 / 9.3 / 29.3 / 50.5 by true class [C3]", t.includes("0.0") && t.includes("9.3") && t.includes("29.3") && t.includes("50.5"));
+  // C3 MANDATES the structural caveat — without it the 0.0% reads as a finding.
+  ok("gradient: states Class A 0.0% is STRUCTURAL, not a result [C3]", t.includes("cannot be under-classified by construction") && t.includes("structural"));
+  ok("all 494 Class-D errors are under-classifications [C5]", t.includes("494"));
+  // C4 forbids presenting the same event three ways — assert the one form used.
+  ok("40 of 163 Class-D devices get no Class-D vote [C4]", t.includes("40 of the 163"));
+  ok("C is the attractor: 2,132 of 6,102 true-B decisions → C, 34.9% [C7]", t.includes("2,132 of 6,102") && t.includes("34.9%"));
+  ok("bias not variance: 92.2% self-consistency against a 0.523 ceiling [C8]", t.includes("92.2%"));
+  ok("§design brief: the three principles", t.includes("never sound more certain than the regulator") && t.includes("decompose before classifying") && t.includes("keep a human in the expensive part"));
+  ok("§scope: nine bodies + CDSCO pilot + not regulatory advice", t.includes("nine regulatory bodies") && t.includes("cdsco is the pilot regulator") && t.includes("not regulatory advice"));
+  ok("§limits: internal benchmark, oracle ≠ ground truth", t.includes("internal benchmark, not a peer-reviewed finding") && t.includes("not as adjudicated ground truth"));
+
+  // Register guardrails — these must STAY false. Each maps to a rule in the
+  // claims register's "Claims explicitly forbidden" table or its calibration notes.
+  ok("models are NOT named (META-1: aliases mutable, comparison not defensible)", !t.includes("gpt-4o") && !t.includes("gemini") && !t.includes("claude") && !t.includes("qwen") && !t.includes("llama") && !t.includes("deepseek"));
+  ok("no majority-class-baseline claim (cut: unregistered AND false)", !t.includes("barely above") && !t.includes("guessed the same class"));
+  ok("no A→B claim (cut: real in the CSV, absent from the register)", !t.includes("class a devices get pushed up"));
+  ok("'life-supporting' removed from every Class D reference", !t.includes("life-supporting"));
+  ok("no forbidden phrasings (held-out / breaks 31% / 35% flip)", !t.includes("held-out") && !t.includes("breaks 31%") && !t.includes("35% of"));
+  ok("no claim any REAL device is misclassified (oracle framing held)", t.includes("reference list places") && !t.includes("devices are misclassified"));
+
+  const rsReg = await regLink(page, "try the regulatory tool");
+  ok("research → regulatory tool, new tab", regOk(rsReg), rsReg ? rsReg.href : "MISSING");
+  const rsFw = await page.evaluate(() => {
+    const a = [...document.querySelectorAll("a")].find((e) => /see the deployment framework/i.test(e.textContent));
+    return a ? a.getAttribute("href") : null;
+  });
+  ok("research cross-links back to /framework", rsFw === "/framework", rsFw ?? "MISSING");
+  // /research must wear the PUBLIC header (Home · About · Framework + Login) —
+  // and must NOT add itself as a fourth nav item. Both halves matter: the first
+  // catches isPublicRoute forgetting the route, the second catches the IA drift.
+  const rsNav = await navText(page);
+  ok("/research wears the PUBLIC header, signed out", rsNav.includes("home") && rsNav.includes("about") && rsNav.includes("framework") && !rsNav.includes("inbox") && !rsNav.includes("registry") && !rsNav.includes("my applications"));
+  ok("Research still NOT in the nav while ON /research", !rsNav.includes("research"));
 
   console.log(`\n${failures === 0 ? "BROWSER VERIFY PASSED" : `${failures} CHECK(S) FAILED`}`);
 } catch (e) {

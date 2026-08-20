@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 /**
  * Framework (methodology) page — DESCRIBES the authoritative PDMF standard.
  * Additive and static: it does not touch the engine, scoring, verdicts, or any
- * flow. The platform implements this framework progressively (its 17 gates map
- * to the 17 clusters below; the framework specifies the 112 underlying items).
+ * flow.
+ *
+ * The platform's gate set is a focused SUBSET the tool runs today. It is
+ * related to the clusters below but NOT one-to-one with them, and this file
+ * must not claim otherwise. The totals coincide on both buyer paths — 17 gates
+ * and 17 clusters public, 19 and 19 private — but the per-dimension splits do
+ * not: clusters run 4/3/4/6 across D1–D4 while gates run 5/3/4/5. Matching
+ * totals are a coincidence of two independently-built sets, not a mapping.
  */
 
 type Cluster = { code: string; name: string; count: number; assesses: string };
@@ -99,6 +105,22 @@ const SAMPLE = [
 
 const TOTAL_QUESTIONS = DIMENSIONS.reduce((n, d) => n + d.clusters.reduce((m, c) => m + c.count, 0), 0);
 
+/**
+ * Cluster counts are BUYER-CONDITIONAL, because D2 is. The public-procurement
+ * variant has 17 clusters; a private buyer swaps D2's 3 public clusters for its
+ * 5 investment-case items, giving 19.
+ *
+ * Both are derived, never typed as literals — the page renders the 17 public
+ * clusters by name, so a hand-written total can silently disagree with what is
+ * actually on screen. The item count (112) is the public path and does not vary:
+ * the private D2 items are not individually counted in the standard.
+ */
+const PUBLIC_CLUSTERS = DIMENSIONS.reduce((n, d) => n + d.clusters.length, 0);
+const PRIVATE_CLUSTERS = DIMENSIONS.reduce(
+  (n, d) => n + (d.buyerConditional ? d.buyerConditional.private.length : d.clusters.length),
+  0
+);
+
 export default function FrameworkPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-16 pb-10">
@@ -121,7 +143,7 @@ export default function FrameworkPage() {
           Tulna, translated to clinical AI.
         </p>
         <div className="flex flex-wrap gap-2 text-sm">
-          {[["4", "dimensions"], ["17", "clusters"], [`${TOTAL_QUESTIONS}`, "assessment items"], ["0–3", "maturity scale"]].map(([n, l]) => (
+          {[["4", "dimensions"], [`${PUBLIC_CLUSTERS} / ${PRIVATE_CLUSTERS}`, "clusters · public / private"], [`${TOTAL_QUESTIONS}`, "assessment items"], ["0–3", "maturity scale"]].map(([n, l]) => (
             <span key={l} className="inline-flex items-baseline gap-1.5 rounded-full border border-line bg-bg-card px-3 py-1">
               <span className="font-serif text-base text-teal-deep">{n}</span>
               <span className="text-muted">{l}</span>
@@ -133,11 +155,17 @@ export default function FrameworkPage() {
       {/* The four dimensions + their clusters */}
       <section className="space-y-4">
         <div className="space-y-1">
-          <h2 className="font-serif text-2xl text-ink">Four dimensions, seventeen clusters.</h2>
-          <p className="text-sm text-muted">
+          {/* Spelled out, so it has to be edited by hand when the counts change —
+              a find-and-replace on "17" sails straight past it. */}
+          <h2 className="font-serif text-2xl text-ink">
+            Four dimensions, seventeen clusters — nineteen for a private buyer.
+          </h2>
+          <p className="max-w-3xl text-sm text-muted">
             Every assessment item carries equal weight, so a dimension's weight is simply its share
             of the {TOTAL_QUESTIONS} items. Workflow and data governance count as much as clinical
-            quality.
+            quality. The {PUBLIC_CLUSTERS} clusters named below are the public-procurement path; a
+            private buyer swaps D2's three clusters for five investment-case items, making{" "}
+            {PRIVATE_CLUSTERS}.
           </p>
         </div>
 
@@ -279,11 +307,58 @@ export default function FrameworkPage() {
           transparent standard rather than a private checklist.
         </p>
         <p className="mt-4 border-t border-line pt-4 text-xs leading-relaxed text-muted">
-          ClearPath implements this framework progressively: the platform's 17 gates correspond to the
-          17 clusters above, and the framework specifies the {TOTAL_QUESTIONS} underlying items each is
-          built toward. The live tool runs a focused subset today — this page describes the standard,
-          not the current question count.
+          ClearPath implements this framework progressively. The live tool runs a focused subset
+          today — a gate set drawn from these same four dimensions, which is related to the clusters
+          above but does not map onto them one-to-one: the totals happen to match, the per-dimension
+          split does not. This page describes the standard and the {TOTAL_QUESTIONS} items it
+          specifies, not the current question count in the product.
         </p>
+      </section>
+
+      {/* ── Community call (brief §7.4) ──────────────────────────────────────
+          Flagged in the brief as present in the earlier draft but absent from
+          the 14 Aug Word doc; open question 7 asked keep-or-cut. RESOLVED
+          (17 Aug): keep. Contact is a single mailto, matching the same call
+          made for /about — a form would mean storage and a DPDP notice. */}
+      <section className="space-y-4 rounded-2xl border border-line bg-bg-card px-6 py-6">
+        <h2 className="font-serif text-2xl text-ink">We&apos;re building a community for:</h2>
+        <ul className="space-y-2.5">
+          {[
+            ["Open data sets", "Shared, documented evaluation data for clinical AI in India, rather than each team rebuilding a private set."],
+            ["Benchmarking existing LLMs", "Measuring what general-purpose models actually get right and wrong on regulatory and clinical tasks, in the open."],
+            ["Open call for collaborations", "Hospitals, innovators, researchers, and funders who want to work on this with us — reach out."],
+          ].map(([lead, rest]) => (
+            <li key={lead} className="flex gap-2.5 text-sm leading-relaxed text-ink-2">
+              <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-teal-deep" />
+              <span>
+                <span className="font-medium text-ink">{lead}</span> — {rest}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <a
+          href="mailto:raunaq.pradhan@gmail.com"
+          className="inline-flex items-center gap-1 text-sm text-teal-deep underline decoration-line underline-offset-4 hover:opacity-80"
+        >
+          raunaq.pradhan@gmail.com
+        </a>
+      </section>
+
+      {/* Cross-link to /research. The PDMF is the deployment standard; the
+          research page is the regulatory engine. Same method, different
+          question — and /research is reachable only from here and home §4,
+          never from the public nav. */}
+      <section className="rounded-2xl border border-line bg-bg-card px-6 py-6">
+        <h2 className="font-serif text-xl text-ink">How we built the regulatory engine.</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-2">
+          The PDMF answers whether a tool is ready to deploy. A separate question — what
+          regulatory class a device is in, and whether a language model can be trusted to
+          say — got the same treatment: we measured the naive approach first, and built
+          around where it failed.
+        </p>
+        <Link href="/research" className="mt-4 inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
+          Read the benchmark <ArrowRight className="h-4 w-4" />
+        </Link>
       </section>
     </div>
   );
