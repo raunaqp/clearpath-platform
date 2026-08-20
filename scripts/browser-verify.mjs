@@ -75,8 +75,8 @@ try {
 
   console.log("\n── HOME landing: hero, entry cards, marketplace band, how-it-works, trust ──");
   let t = await body(page);
-  ok("hero headline", t.includes("discover, deployment and evaluation platform for digital and ai solutions for hospitals"));
-  ok("hero sub-paragraph", t.includes("more ai tools than it can safely evaluate and deploy") && t.includes("without pilot hell"));
+  ok("hero headline", t.includes("discovery, deployment and evaluation platform for digital and ai solutions for hospitals"));
+  ok("hero sub-paragraph", t.includes("more ai tools than it can safely evaluate and deploy") && t.includes("evaluate them for their settings") && t.includes("without pilot hell"));
   // DO NOT rename this "Slingshot" — it is the OLD brand name, named here so
   // the check can prove it never reaches the rendered page. Renaming it to the
   // current name inverts the guard into a meaningless self-check.
@@ -87,6 +87,16 @@ try {
   ok("marketplace supporting lines (§2.3)", t.includes("get connected to hospitals and innovators based on your need") && t.includes("a public directory of clinically assessed tools and digitally ready hospitals"));
   ok("how it works (assess/place/run/prove)", t.includes("assess") && t.includes("place") && t.includes("run") && t.includes("prove"));
   ok("trust line (CDSCO/DPDP/ABDM-aware)", t.includes("abdm-aware") && t.includes("calibrated language"));
+  // Closing call. The link text is asserted too: "click here" is the thing it
+  // must never regress to, and the mailto has to be the same address /framework
+  // uses, not a second inbox nobody watches.
+  ok("home closing call (honest readiness assessment + open datasets)", t.includes("honest readiness assessment") && t.includes("open datasets and benchmarks for clinical ai in india"));
+  ok("closing call link is descriptive, never 'click here'", !t.includes("click here"));
+  const homeMail = await page.evaluate(() => {
+    const a = [...document.querySelectorAll('a[href^="mailto:"]')].find((e) => /raunaq/i.test(e.href));
+    return a ? { href: a.getAttribute("href"), text: a.textContent.trim().toLowerCase() } : null;
+  });
+  ok("closing call is a mailto (no form on home)", homeMail?.href === "mailto:raunaq.pradhan@gmail.com" && /readiness assessment/.test(homeMail?.text ?? ""), JSON.stringify(homeMail));
   // §4 on-ramp: the link text is now "Start there", not "regulatory journey".
   const homeReg = await regLink(page, "start there");
   ok("home regulatory on-ramp → clearpath-medtech, new tab", regOk(homeReg), homeReg ? homeReg.href : "MISSING");
@@ -477,9 +487,21 @@ try {
   ok("Framework in the nav", (await navText(page)).includes("framework"));
 
   await goto(page, "/framework");
-  await waitText(page, "pre-deployment maturity framework");
+  await waitText(page, "maturity assessment framework");
   t = await body(page);
   ok("intro: practitioner-led standard + EdTech Tulna model", t.includes("practitioner-led") && t.includes("edtech tulna"));
+  ok("h1 covers digital AND clinical AI", t.includes("a readiness standard for digital and clinical ai before it reaches patients"));
+  ok("intro reframe: fitness for a particular context", t.includes("fit for a particular context"));
+  // Dropped from this page (kept on /about and /research, deliberately).
+  ok("no 'PDMF' acronym on /framework", !t.includes("pdmf"));
+  // Dropped SITEWIDE — /about and /research used to carry it too, and a single
+  // page reintroducing the acronym is the regression this guards.
+  for (const path of ["/", "/about", "/research"]) {
+    await goto(page, path);
+    ok(`no 'PDMF' acronym on ${path}`, !(await body(page)).includes("pdmf"));
+  }
+  await goto(page, "/framework");
+  t = await body(page);
   ok("4 dimensions with names + weights (31/14/33/34)", t.includes("clinical, scientific & regulatory quality") && t.includes("system fit") && t.includes("user experience & workflow fit") && t.includes("technology, data governance & usability") && t.includes("31") && t.includes("14") && t.includes("33") && t.includes("34"));
   // Cluster count is buyer-conditional (D2 is): 17 public / 19 private, 112
   // items, 4 dimensions. A bare "19" would contradict the page, which lists the
@@ -487,13 +509,24 @@ try {
   ok("totals: 4 dimensions · 17/19 clusters (public/private) · 112 items", t.includes("17 / 19") && t.includes("public / private") && t.includes("112") && t.includes("assessment items") && t.includes("dimensions"));
   // The spelled-out heading is a separate failure mode from the numeral chips:
   // a find-and-replace on "17" misses it, so it gets its own assertion.
-  ok("spelled-out heading carries BOTH counts (seventeen / nineteen)", t.includes("four dimensions, seventeen clusters") && t.includes("nineteen for a private buyer"));
+  ok("spelled-out heading leads with what renders (seventeen, then nineteen)", t.includes("four dimensions, seventeen clusters") && t.includes("nineteen on the private-buyer path"));
   ok("body explains the 17→19 swap (D2 public clusters → private items)", t.includes("public-procurement path") && t.includes("investment-case items"));
   // Spot-check clusters across all four dimensions + a distinctive item count.
   ok("clusters present (D1.C Clinical Performance & Safety, D4.F Data Privacy…)", t.includes("d1.c") && t.includes("clinical performance & safety") && t.includes("d4.f") && t.includes("data privacy, storage & security") && t.includes("14 items"));
-  ok("maturity ladder 0–3 (absent → system-owned, gate-blocking)", t.includes("absent / fails") && t.includes("works via a workaround") && t.includes("adequate with support") && t.includes("system-owned") && t.includes("deployment-blocking"));
+  ok("maturity ladder 0–2 (absent → requires support → system-owned, gate-blocking)", t.includes("absent / fails") && t.includes("requires support") && t.includes("system-owned") && t.includes("three-step maturity scale") && t.includes("deployment-blocking"));
+  // The 0–3 rungs must STAY deleted: shipping them alongside a 0–2 denominator
+  // is exactly the contradiction this change removed.
+  ok("old 0–3 rungs gone", !t.includes("works via a workaround") && !t.includes("adequate with support") && !t.includes("four-step maturity scale"));
+  ok("scale chip reads 0–2", t.includes("0–2") && t.includes("maturity scale"));
   ok("weighting note: workflow + data weigh as much as evidence", t.includes("outweigh") && t.includes("necessary") && t.includes("not sufficient"));
-  ok("sample report: 'Conditionally deployable' + dimension averages (illustrative)", t.includes("conditionally deployable") && t.includes("scaffolded programme") && t.includes("illustrative") && t.includes("2.4") && t.includes("1.6"));
+  ok("sample report: 'Conditionally deployable' + dimension averages (illustrative)", t.includes("conditionally deployable") && t.includes("scaffolded programme") && t.includes("illustrative") && t.includes("1.6") && t.includes("1.1"));
+  // Every average must be scorable on the ladder the same page defines. A score
+  // above MAX_LEVEL is the defect that shipped last time — assert it directly.
+  const sampleOk = await page.evaluate(() => {
+    const nums = [...document.body.innerText.matchAll(/(\d\.\d)\s*\/\s*(\d)/g)];
+    return nums.length >= 4 && nums.every((m) => Number(m[1]) <= Number(m[2]) && Number(m[2]) === 2);
+  });
+  ok("sample averages are inside the 0–2 ladder (n.n / 2)", sampleOk);
   ok("openness line: open, 3 tools / 8 districts / 75,000+", t.includes("open and practitioner-led") && t.includes("8 districts") && t.includes("75,000"));
   // The gates↔clusters correspondence claim was FALSE and must stay deleted:
   // totals match on both buyer paths, per-dimension splits don't (clusters
@@ -511,6 +544,21 @@ try {
   ok("community contact is a mailto (no form)", commMail === "mailto:raunaq.pradhan@gmail.com", commMail ?? "MISSING");
   ok("no contact form on /framework", (await page.evaluate(() => document.querySelectorAll("form, input[type=email]").length)) === 0);
   ok("D2 buyer-conditional split (public procurement vs private investment case)", t.includes("buyer-conditional") && t.includes("state / government procurement") && t.includes("private-hospital investment-case") && t.includes("roi / payback") && t.includes("liability & indemnity"));
+  // ── How it was built (brief §7.1–7.3) ──
+  // Counts inside the timeline must match the rest of the page, and "112+"
+  // must stay gone — the item total is derived, not an estimate.
+  ok("timeline: drafting entry carries the buyer split + exact 112", t.includes("17 public / 19 private clusters, 112 items"));
+  ok("no '112+' anywhere on the page", !t.includes("112+"));
+  ok("timeline: all five entries", t.includes("literature review") && t.includes("field documentation") && t.includes("framework drafting") && t.includes("beta testing") && t.includes("continuous revision"));
+  ok("timeline: status chips (complete / ongoing / planned)", t.includes("complete") && t.includes("ongoing") && t.includes("planned"));
+  ok("timeline: periods spelled out", t.includes("2024") && t.includes("2025 to early 2026") && t.includes("q1 to q2 2026") && t.includes("q2 to q3 2026") && t.includes("h2 2026 onward"));
+  ok("timeline: Punjab + Primary Care Innovation Unit named", t.includes("primary care innovation unit inside punjab's public health system"));
+  ok("timeline: literature sources (NASSS/RE-AIM/CFIR, CDSCO, ABDM, DPDP)", t.includes("nasss") && t.includes("re-aim") && t.includes("cfir") && t.includes("cdsco mdr 2017") && t.includes("abdm interoperability") && t.includes("dpdp act 2023"));
+  ok("what we built: three bullets", t.includes("what we built") && t.includes("embedded in a state department of health") && t.includes("over two years") && t.includes("catching a failure in the field"));
+  ok("what's next: four bullets incl. ONHS + standalone scoring guide", t.includes("what we're building next") && t.includes("standalone scoring guide") && t.includes("onhs platform") && t.includes("streamlining body for digital trials") && t.includes("open source benchmarking"));
+  // §7.3 is proposals, not signed work — the brief says do not upgrade the verbs.
+  ok("what's next stays hedged (no signed-engagement verbs)", !t.includes("partnered with") && !t.includes("in partnership with") && !t.includes("we have signed"));
+  ok("closing line", t.includes("it was built in practice. it needs beta users to refine it further"));
 
   console.log("\n── RESEARCH (regulatory benchmark) page + entry points ──");
   // Sign OUT first: /research is a public marketing page, and the header it
