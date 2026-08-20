@@ -345,10 +345,10 @@ export default function ResearchPage() {
         <h2 className="font-serif text-xl text-ink">The same method, one layer up.</h2>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-2">
           This page explains the regulatory engine — how a device gets classified
-          and why we distrust a confident answer. The PDMF explains the
-          deployment standard — whether a tool is ready to reach patients here,
-          and against what benchmark. Different questions, same method: measure
-          the failure first, then build to it.
+          and why we distrust a confident answer. The Maturity Assessment
+          Framework explains the deployment standard — whether a tool is ready
+          to reach patients here, and against what benchmark. Different
+          questions, same method: measure the failure first, then build to it.
         </p>
         <Link
           href="/framework"

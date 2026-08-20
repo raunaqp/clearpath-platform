@@ -32,7 +32,7 @@ const COMMITMENTS = [
   },
   {
     lead: "Open standard.",
-    body: "The PDMF is published, not a private checklist. A hospital should be able to see the standard it is being assessed against, disagree with it, and argue about it.",
+    body: "The framework is published, not a private checklist. A hospital should be able to see the standard it is being assessed against, disagree with it, and argue about it.",
   },
 ];
 
@@ -78,12 +78,11 @@ export default function AboutPage() {
               The standard
             </p>
             <p className="mt-2 text-sm leading-relaxed text-ink-2">
-              The PDMF — the Pre-Deployment Maturity Framework. It sets out what
-              a clinical AI tool has to demonstrate before it reaches patients,
-              across four dimensions: clinical and regulatory quality, system
-              fit, workflow fit, and data governance. It is open,
-              practitioner-led, and sits beside a regulator rather than
-              replacing one.
+              The Maturity Assessment Framework. It sets out what a clinical AI
+              tool has to demonstrate before it reaches patients, across four
+              dimensions: clinical and regulatory quality, system fit, workflow
+              fit, and data governance. It is open, practitioner-led, and sits
+              beside a regulator rather than replacing one.
             </p>
           </div>
           <div className="rounded-card border border-line bg-bg-card p-5">
@@ -123,7 +122,7 @@ export default function AboutPage() {
         </h2>
         <div className="max-w-3xl space-y-4 leading-relaxed text-ink-2">
           <p>
-            The PDMF came out of the Primary Care Innovation Unit, embedded
+            The framework came out of the Primary Care Innovation Unit, embedded
             inside a state Department of Health in Punjab. Over two years it was
             used to evaluate and scale digital and AI tools in primary care —
             across{" "}

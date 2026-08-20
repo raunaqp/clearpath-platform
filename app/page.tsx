@@ -71,13 +71,14 @@ export default function Home() {
       {/* ── §2.1 Hero ────────────────────────────────────────────────────── */}
       <section className="max-w-3xl space-y-5 pt-8">
         <h1 className="font-serif text-4xl leading-[1.05] text-ink sm:text-5xl">
-          Discover, deployment and evaluation platform for digital and AI
+          Discovery, deployment and evaluation platform for digital and AI
           solutions for hospitals.
         </h1>
         <p className="max-w-2xl text-lg leading-relaxed text-ink-2">
           Every hospital is offered more AI tools than it can safely evaluate and
           deploy. ClearPath is the platform through which hospitals can identify
-          technologies they need, evaluate, and run, without pilot hell.
+          technologies they need and evaluate them for their settings, without
+          pilot hell.
         </p>
       </section>
 
@@ -162,6 +163,24 @@ export default function Home() {
           Built for India — CDSCO, DPDP, ABDM-aware. Verdicts use calibrated language, never more
           certain than the evidence.
         </p>
+      </section>
+
+      {/* Closing call. Same mailto as /framework's community block — a form
+          would mean storage and a DPDP notice. The link text is descriptive
+          rather than "click here": it has to say where it goes when read on its
+          own, which is how a screen reader announces a link list. */}
+      <section className="rounded-2xl border border-line bg-teal-light/30 px-6 py-6">
+        <p className="max-w-3xl text-base leading-relaxed text-ink-2">
+          We&apos;re looking for hospitals and innovators who want an honest readiness assessment,
+          and people building open datasets and benchmarks for clinical AI in India.
+        </p>
+        <a
+          href="mailto:raunaq.pradhan@gmail.com"
+          className="mt-3 inline-flex items-center gap-1 text-sm text-teal-deep underline decoration-line underline-offset-4 hover:opacity-80"
+        >
+          Get in touch about a readiness assessment
+          <ArrowRight className="h-4 w-4" />
+        </a>
       </section>
     </div>
   );
