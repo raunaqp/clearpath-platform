@@ -97,7 +97,7 @@ export default function CardPage() {
           Next steps — two options
         </p>
       </div>
-      <SiteMatches card={view.card} toolName={view.tool.name} />
+      <SiteMatches card={view.card} toolName={view.tool.name} slug={view.tool.slug} />
       {legacyCard && (
         <>
           <ApplicableHospitals tool={view.tool} card={legacyCard} />

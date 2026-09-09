@@ -7,6 +7,8 @@ import { matchToolToSites } from "@/lib/match";
 import { getHospitals } from "@/lib/mock/api";
 import { getSiteProfiles, getProblemRegisters } from "@/lib/mock/api-registry";
 import { MatchBreakdownCard } from "./MatchBreakdown";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 /**
  * S9 — site matching, explained.
@@ -17,7 +19,15 @@ import { MatchBreakdownCard } from "./MatchBreakdown";
  * the ordering is the whole guarantee. A profile written after a tool arrives
  * is a justification.
  */
-export function SiteMatches({ card, toolName }: { card: ReadinessCard; toolName: string }) {
+export function SiteMatches({
+  card,
+  toolName,
+  slug,
+}: {
+  card: ReadinessCard;
+  toolName: string;
+  slug: string;
+}) {
   const [matches, setMatches] = useState<ContextMatch[] | null>(null);
 
   useEffect(() => {
@@ -56,6 +66,24 @@ export function SiteMatches({ card, toolName }: { card: ReadinessCard; toolName:
           ))}
         </ul>
       )}
+
+      {/*
+        The one action here goes to ClearPath, not to a hospital.
+        This replaced a per-hospital "Request clinical trial" button that wrote
+        straight into that hospital's inbox — which skipped fit validation,
+        skipped the innovator's own permission to share, and told a hospital it
+        had received a request it had never been asked about.
+      */}
+      <Link
+        href={`/submit/${slug}/interest`}
+        className="mt-4 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90"
+      >
+        Express interest to ClearPath <ArrowRight className="h-4 w-4" />
+      </Link>
+      <p className="mt-2 text-xs leading-relaxed text-muted">
+        You are not contacting a hospital. ClearPath validates the fit, confirms what you are willing
+        to share, and approaches the site on your behalf.
+      </p>
     </section>
   );
 }

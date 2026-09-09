@@ -1,23 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowRight, Building2, Check, MapPin, LayoutGrid, Table2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Building2, MapPin, LayoutGrid, Table2 } from "lucide-react";
 import type { Tool, ToolCategory } from "@/lib/schemas/tool";
 import type { ToolReadinessCard } from "@/lib/schemas/readiness-card";
 import type { Hospital } from "@/lib/schemas/hospital";
 import type { SiteGrade } from "@/lib/schemas/site";
 import type { RequestType } from "@/lib/schemas/submission";
 import { applicableHospitals, requestTypeForGrade, type HospitalMatch } from "@/lib/match";
-import { getHospitals, submitToHospital } from "@/lib/mock/api";
+import { getHospitals } from "@/lib/mock/api";
 import { SITE_GRADE_STYLE } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 
 /**
  * Applicable hospitals — the vendor sees the sites that fit this tool. The
  * action is keyed off the site's readiness tier (BUILD_SPEC — change 1):
- *   Tier B (trial-ready)      → "Request clinical trial"
- *   Tier A (deployment-ready) → "Request deployment"
+ *   Tier B (trial-ready)      → a trial is the shape of engagement
+ *   Tier A (deployment-ready) → a deployment is
+ *
+ * The ACTION on every row is the same regardless: express interest to
+ * ClearPath. The tier decides what would eventually be requested, not who the
+ * innovator gets to contact.
  *   Not ready                 → no action ("Not applicable")
  * Shown as cards or a table; the request lands in that hospital's inbox
  * labelled with the request type.
@@ -39,11 +43,6 @@ function tierAction(grade: SiteGrade): TierAction {
   return { label: requestType === "trial" ? "Request clinical trial" : "Request deployment", requestType };
 }
 
-const REQUEST_SENT_LABEL: Record<RequestType, string> = {
-  trial: "Trial request sent",
-  deployment: "Deployment request sent",
-};
-
 export function ApplicableHospitals({
   tool,
   card,
@@ -51,9 +50,8 @@ export function ApplicableHospitals({
   tool: Tool;
   card: ToolReadinessCard;
 }) {
+  const router = useRouter();
   const [matches, setMatches] = useState<HospitalMatch[] | null>(null);
-  const [sent, setSent] = useState<Record<string, RequestType>>({});
-  const [busy, setBusy] = useState<string | null>(null);
   const [view, setView] = useState<"cards" | "table">("cards");
 
   useEffect(() => {
@@ -66,11 +64,18 @@ export function ApplicableHospitals({
     };
   }, [tool]);
 
-  async function sendRequest(hospitalId: string, requestType: RequestType) {
-    setBusy(hospitalId);
-    await submitToHospital({ toolId: tool.id, readinessCardId: card.id, hospitalId, requestType });
-    setSent((s) => ({ ...s, [hospitalId]: requestType }));
-    setBusy(null);
+  /**
+   * DELIBERATELY NOT A HOSPITAL WRITE ANY MORE.
+   *
+   * This used to call `submitToHospital`, putting the tool straight into that
+   * hospital's inbox. That skipped every part of ClearPath's actual job — fit
+   * validation against records the site published before this tool existed, the
+   * innovator's own permission to share, and asking the hospital rather than
+   * notifying it. Interest now goes to ClearPath and the request form only
+   * opens once both sides are willing.
+   */
+  function goToInterest() {
+    router.push(`/submit/${tool.slug}/interest`);
   }
 
   function seekingLabel(h: Hospital): string {
@@ -119,7 +124,6 @@ export function ApplicableHospitals({
           {matches.map(({ hospital, reason }) => {
             const grade = SITE_GRADE_STYLE[hospital.siteReadiness.grade];
             const action = tierAction(hospital.siteReadiness.grade);
-            const sentType = sent[hospital.id];
             return (
               <li key={hospital.id} className="rounded-card border border-line bg-bg p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -138,12 +142,11 @@ export function ApplicableHospitals({
                   </div>
                   {action ? (
                     <button
-                      onClick={() => sendRequest(hospital.id, action.requestType)}
-                      disabled={busy !== null || !!sentType}
+                      onClick={goToInterest}
                       className="inline-flex shrink-0 items-center gap-2 rounded-md bg-teal-deep px-3.5 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     >
-                      {sentType ? <Check className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-                      {sentType ? REQUEST_SENT_LABEL[sentType] : action.label}
+                      <Building2 className="h-4 w-4" />
+                      Express interest to ClearPath
                     </button>
                   ) : (
                     <span className="shrink-0 rounded-md border border-line px-3 py-2 text-sm text-muted">
@@ -151,14 +154,6 @@ export function ApplicableHospitals({
                     </span>
                   )}
                 </div>
-                {sentType && (
-                  <p className="mt-3 flex items-center gap-1.5 border-t border-line-soft pt-3 text-sm text-ink-2">
-                    {sentType === "trial" ? "Clinical trial" : "Deployment"} request landed in {hospital.name}'s inbox as "New".
-                    <Link href="/hospital" className="inline-flex items-center gap-1 text-teal-deep">
-                      Open the hospital inbox <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </p>
-                )}
               </li>
             );
           })}
@@ -179,8 +174,7 @@ export function ApplicableHospitals({
               {matches.map(({ hospital }) => {
                 const grade = SITE_GRADE_STYLE[hospital.siteReadiness.grade];
                 const action = tierAction(hospital.siteReadiness.grade);
-                const sentType = sent[hospital.id];
-                return (
+                    return (
                   <tr key={hospital.id} className="border-b border-line-soft last:border-0">
                     <td className="px-3 py-3 text-ink">{hospital.name}</td>
                     <td className="px-3 py-3 text-ink-2">{hospital.location}</td>
@@ -194,12 +188,10 @@ export function ApplicableHospitals({
                     <td className="px-3 py-3">
                       {action ? (
                         <button
-                          onClick={() => sendRequest(hospital.id, action.requestType)}
-                          disabled={busy !== null || !!sentType}
-                          className="inline-flex items-center gap-1.5 rounded-md bg-teal-deep px-3 py-1.5 text-xs text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                          onClick={goToInterest}
+                              className="inline-flex items-center gap-1.5 rounded-md bg-teal-deep px-3 py-1.5 text-xs text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                         >
-                          {sentType ? <Check className="h-3.5 w-3.5" /> : null}
-                          {sentType ? REQUEST_SENT_LABEL[sentType] : action.label}
+                          Express interest to ClearPath
                         </button>
                       ) : (
                         <span className="text-xs text-muted">Not applicable</span>
