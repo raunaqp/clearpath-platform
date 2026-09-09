@@ -7,19 +7,24 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { getCardV2 } from "@/lib/mock/api";
 import type { CardV2View } from "@/lib/mock/cards-v2";
 import { ReadinessCardV2 } from "@/components/card/v2/ReadinessCardV2";
+import { ListingPanel } from "@/components/registry/ListingPanel";
+import { getListing } from "@/lib/mock/api-registry";
+import type { Listing } from "@/lib/engine/listing";
 
 /** Registry detail — the full card for a tool (opened from "View details"). */
 export default function RegistryDetail() {
   const { toolId } = useParams<{ toolId: string }>();
   const router = useRouter();
   const [view, setView] = useState<CardV2View | null>(null);
+  const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let live = true;
     (async () => {
-      const v = await getCardV2(toolId);
+      const [v, l] = await Promise.all([getCardV2(toolId), getListing(toolId)]);
       if (!live) return;
+      setListing(l ?? null);
       if (v && toolId !== v.tool.slug) router.replace(`/registry/${v.tool.slug}`);
       setView(v ?? null); setLoading(false);
     })();
@@ -37,6 +42,7 @@ export default function RegistryDetail() {
         <Link href="/registry" className="inline-flex items-center gap-1.5 text-sm text-ink-2 hover:text-teal-deep"><ArrowLeft className="h-4 w-4" /> Registry</Link>
         <Link href={`/workspace/${view.tool.slug}`} className="inline-flex items-center gap-1 text-sm text-teal-deep">Track deployment status <ArrowRight className="h-3.5 w-3.5" /></Link>
       </div>
+      {listing && <ListingPanel listing={listing} />}
       {/*
         The SAME card the innovator sees. A hospital opening this route used to
         get the v1 card — a 94/100 disc and percentage dimensions — while the

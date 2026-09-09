@@ -58,6 +58,8 @@ export const getVendors = (): Promise<Vendor[]> => latency(store.listVendors());
 export const getVendor = (id: string): Promise<Vendor | undefined> =>
   latency(store.getVendor(id));
 export const getTools = (): Promise<Tool[]> => latency(store.listTools());
+export const getReadinessCards = (): Promise<ToolReadinessCard[]> =>
+  latency(store.listReadinessCards());
 export const getTool = (id: string): Promise<Tool | undefined> =>
   latency(store.getTool(id));
 

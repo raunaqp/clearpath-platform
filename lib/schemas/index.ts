@@ -17,6 +17,7 @@ export * from "./deployment";
 export * from "./evidence";
 export * from "./item";
 export * from "./score";
+export * from "./site-profile";
 
 /**
  * `context.ts` is re-exported by name rather than with `export *`, because it

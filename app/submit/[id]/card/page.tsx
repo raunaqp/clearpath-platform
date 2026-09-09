@@ -7,6 +7,7 @@ import { getCardV2 } from "@/lib/mock/api";
 import type { CardV2View } from "@/lib/mock/cards-v2";
 import { ReadinessCardV2 } from "@/components/card/v2/ReadinessCardV2";
 import { ApplicableHospitals } from "@/components/card/ApplicableHospitals";
+import { SiteMatches } from "@/components/registry/SiteMatches";
 import { RegistryListing } from "@/components/card/RegistryListing";
 import { getCardBySlug } from "@/lib/mock/api";
 import type { ToolReadinessCard } from "@/lib/schemas/readiness-card";
@@ -96,6 +97,7 @@ export default function CardPage() {
           Next steps — two options
         </p>
       </div>
+      <SiteMatches card={view.card} toolName={view.tool.name} />
       {legacyCard && (
         <>
           <ApplicableHospitals tool={view.tool} card={legacyCard} />

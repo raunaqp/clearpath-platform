@@ -6,11 +6,11 @@ import type { Hospital } from "@/lib/schemas/hospital";
 import {
   getHospital,
   getSubmissions,
-  getTool,
   getVendors,
-  getReadinessCard,
   skipSubmission,
   unskipSubmission,
+  getTools,
+  getReadinessCards,
 } from "@/lib/mock/api";
 import { suggestedSkipReason } from "@/lib/stages";
 import { useHospital } from "@/lib/hospital/HospitalContext";
@@ -35,14 +35,27 @@ export default function HospitalInbox() {
   const load = useCallback(async () => {
     const req = ++reqRef.current;
     setRows(null);
-    const [subs, vendors] = await Promise.all([getSubmissions(hospitalId), getVendors()]);
-    const resolved = await Promise.all(
-      subs.map(async (submission) => {
-        const [tool, card] = await Promise.all([getTool(submission.toolId), getReadinessCard(submission.readinessCardId)]);
-        const vendor = tool ? vendors.find((v) => v.id === tool.vendorId) ?? null : null;
-        return { submission, tool: tool ?? null, vendor, verdict: card?.verdict ?? null };
-      })
-    );
+    /**
+     * ONE wave, not two.
+     *
+     * This used to fetch submissions and vendors, then fetch a tool and a card
+     * PER ROW — an N+1 behind a second round trip, so the inbox took two full
+     * latency windows to paint even though every value was already in the same
+     * store. Bulk-reading the tools and cards once collapses it to a single
+     * wave and roughly halves time to first row.
+     */
+    const [subs, vendors, tools, cards] = await Promise.all([
+      getSubmissions(hospitalId),
+      getVendors(),
+      getTools(),
+      getReadinessCards(),
+    ]);
+    const resolved = subs.map((submission) => {
+      const tool = tools.find((t) => t.id === submission.toolId) ?? null;
+      const card = cards.find((c) => c.id === submission.readinessCardId);
+      const vendor = tool ? vendors.find((v) => v.id === tool.vendorId) ?? null : null;
+      return { submission, tool, vendor, verdict: card?.verdict ?? null };
+    });
     if (req !== reqRef.current) return; // a newer load started — drop this stale result
     resolved.sort((a, b) => b.submission.createdAt.localeCompare(a.submission.createdAt));
     setRows(resolved);

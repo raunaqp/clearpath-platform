@@ -77,13 +77,11 @@ export default function AuditPage() {
       ]);
       const d = c ? await getDocumentsByIds(c.docIds) : [];
       const s = await getAiSuggestion(sub.toolId);
-      const v2 = t ? await getCardV2(t.slug) : undefined;
       if (!live) return;
       if (t && id !== t.slug) router.replace(`/hospital/${t.slug}/audit`);
       setSubmission(sub);
       setTool(t ?? null);
       setCard(c ?? null);
-      setCardV2(v2 ?? null);
       setHospital(h ?? null);
       setDocs(d);
       setSuggestion(s);
@@ -98,6 +96,24 @@ export default function AuditPage() {
       live = false;
     };
   }, [id]);
+
+  /**
+   * The v2 card, fetched OUTSIDE the chain that gates first paint. It only
+   * feeds the vendor side of the verdict comparison, which has fallbacks — and
+   * adding a latency'd call to the blocking sequence delayed this page enough
+   * to make the browser suite intermittently red on assertions downstream of
+   * it.
+   */
+  useEffect(() => {
+    let live = true;
+    if (!tool) return;
+    void getCardV2(tool.slug).then((v) => {
+      if (live) setCardV2(v ?? null);
+    });
+    return () => {
+      live = false;
+    };
+  }, [tool]);
 
   const subId = submission?.id ?? id;
   const auditor = hospital?.name ?? "Our hospital";

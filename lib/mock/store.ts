@@ -274,6 +274,10 @@ export function getSubmission(submissionId: string): Submission | undefined {
 export function getSubmissionsByToolId(toolId: string): Submission[] {
   return getDb().submissions.filter((s) => s.toolId === toolId);
 }
+/** Every current card. One read instead of one per row. */
+export function listReadinessCards(): ToolReadinessCard[] {
+  return getDb().readinessCards;
+}
 export function getReadinessCard(cardId: string): ToolReadinessCard | undefined {
   return getDb().readinessCards.find((c) => c.id === cardId);
 }
@@ -383,12 +387,52 @@ export function createAssessment(input: CreateAssessmentInput): {
 } {
   const d = getDb();
 
-  const vendor: Vendor = { id: id("vendor"), ...input.vendor };
+  /**
+   * ONE CANONICAL TOOL RECORD.
+   *
+   * This used to mint a new vendor and tool on every run, so a vendor
+   * re-submitting CerviAI produced a SECOND registry row — same name, slug
+   * "cerviai-2", and no CDSCO class, because the wizard does not collect one.
+   * Two rows for one product, one of them quietly missing its device class, is
+   * a data defect rather than a display bug, and a hospital comparing them has
+   * no way to tell which is the real record.
+   *
+   * A submission for a tool this vendor already has UPDATES that record and
+   * PRESERVES the fields the wizard cannot supply — device class, BODH score —
+   * rather than overwriting them with blanks. Re-assessing a tool is a new
+   * assessment of the same product, not a new product.
+   */
+  const existingVendor = d.vendors.find(
+    (v) => v.name.trim().toLowerCase() === input.vendor.name.trim().toLowerCase()
+  );
+  const vendor: Vendor = existingVendor
+    ? Object.assign(existingVendor, { ...input.vendor, id: existingVendor.id })
+    : { id: id("vendor"), ...input.vendor };
+  if (!existingVendor) d.vendors.push(vendor);
+
   const baseSlug = slugify(input.tool.name);
-  let slug = baseSlug;
-  let n = 2;
-  while (d.tools.some((t) => t.slug === slug)) slug = `${baseSlug}-${n++}`;
-  const tool: Tool = { id: id("tool"), slug, vendorId: vendor.id, ...input.tool };
+  const existingTool = d.tools.find(
+    (t) =>
+      t.vendorId === vendor.id &&
+      t.name.trim().toLowerCase() === input.tool.name.trim().toLowerCase()
+  );
+
+  let tool: Tool;
+  if (existingTool) {
+    // Preserve what the wizard cannot supply; take everything it can.
+    tool = Object.assign(existingTool, {
+      ...input.tool,
+      deviceClass: existingTool.deviceClass,
+      bodhScore: existingTool.bodhScore,
+      docIds: [...new Set([...existingTool.docIds, ...input.tool.docIds])],
+    });
+  } else {
+    let slug = baseSlug;
+    let n = 2;
+    while (d.tools.some((t) => t.slug === slug)) slug = `${baseSlug}-${n++}`;
+    tool = { id: id("tool"), slug, vendorId: vendor.id, ...input.tool };
+    d.tools.push(tool);
+  }
   const card = runToolAssessment({
     id: id("card"),
     toolId: tool.id,
@@ -400,9 +444,11 @@ export function createAssessment(input: CreateAssessmentInput): {
     createdAt: now(),
   });
 
-  d.vendors.push(vendor);
-  d.tools.push(tool);
-  d.readinessCards.push(card);
+  // One current card per tool — a re-assessment replaces, it does not stack.
+  const cardIdx = d.readinessCards.findIndex((c) => c.toolId === tool.id);
+  if (cardIdx >= 0) d.readinessCards[cardIdx] = card;
+  else d.readinessCards.push(card);
+
   persist();
   return { vendor, tool, card };
 }
