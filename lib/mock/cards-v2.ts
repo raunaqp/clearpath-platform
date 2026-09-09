@@ -460,3 +460,15 @@ function nextIssueDate(slug: string): string {
   from.setUTCDate(from.getUTCDate() + 7);
   return from.toISOString();
 }
+
+/**
+ * The declaration behind a SEEDED submission.
+ *
+ * A registered submission carries its own; a fixture's lives in its v2 setup.
+ * Exposed so screens that need to re-derive discrepancies — the card, the
+ * assessment step — can reach the same declaration the card was built from,
+ * rather than each inventing one.
+ */
+export function seededDeclaration(slug: string): SelfDeclaration | undefined {
+  return SEEDED[slug]?.declaration ?? getRegisteredSubmission(slug)?.declaration;
+}

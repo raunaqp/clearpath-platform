@@ -7,6 +7,8 @@ import { describeConditions } from "@/lib/engine/verdict";
 import { CARD_VERDICT_STYLE } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 import { CardHeaderBlock, ContextBlock } from "./CardHeaderBlock";
+import { GateSummaryChip } from "./GateSummaryChip";
+import { BodhScore } from "../BodhScore";
 import { ConditionsTable } from "./ConditionsTable";
 import { DimensionsTable } from "./DimensionsTable";
 import { Limitations } from "./Limitations";
@@ -41,11 +43,21 @@ export function ReadinessCardV2({
   tool,
   evidence,
   contextIsReal,
+  discrepancyCount,
+  showRemediationLink = true,
 }: {
   card: ReadinessCard;
   tool: Tool;
   evidence: Evidence[];
   contextIsReal: boolean;
+  /**
+   * Discrepancies raised at declaration. Optional: a card read by a hospital
+   * from the registry has no declaration step behind it in that session, and a
+   * count with nothing to relate it to explains nothing.
+   */
+  discrepancyCount?: number;
+  /** The vendor's own view offers remediation; a hospital's read-only view does not. */
+  showRemediationLink?: boolean;
 }) {
   const v = CARD_VERDICT_STYLE[card.verdict];
 
@@ -53,9 +65,15 @@ export function ReadinessCardV2({
     <article className="space-y-5">
       <div className={cn("rounded-2xl border p-4 sm:p-6", v.outer)}>
         <div className="rounded-xl border border-[#D9D5C8] bg-white px-5 py-6 sm:px-6 sm:py-8 md:px-8">
-          <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.14em] text-[#BA7517]">
-            Readiness card
-          </p>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#BA7517]">
+              Readiness card
+            </p>
+            {/* A count of discrete findings, not a composite. See GateSummaryChip. */}
+            <div className="shrink-0">
+              <GateSummaryChip gateSummary={card.gateSummary} />
+            </div>
+          </div>
 
           <CardHeaderBlock card={card} />
           <ContextBlock card={card} contextIsReal={contextIsReal} />
@@ -76,6 +94,23 @@ export function ReadinessCardV2({
             <h2 className="mb-3 border-b border-[#D9D5C8] pb-1.5 font-serif text-xl text-[#0E1411]">
               Conditions
             </h2>
+            {/*
+              Three numbers appear across this flow — discrepancies raised at
+              declaration, gates not clear, conditions on the card — and without
+              a sentence tying them together a reader assumes one of them is
+              wrong. They are different things measured at different moments.
+            */}
+            {discrepancyCount !== undefined && (
+              <p className="mb-3 text-sm leading-relaxed text-[#6B766F]">
+                {discrepancyCount} {discrepancyCount === 1 ? "discrepancy was" : "discrepancies were"}{" "}
+                raised when the declaration was checked against the evidence.{" "}
+                {card.conditions.length === 0
+                  ? "None survived assessment as a condition."
+                  : `${card.conditions.length} ${card.conditions.length === 1 ? "became a condition" : "became conditions"}.`}{" "}
+                A discrepancy is a question about a claim; a condition is what an
+                assessment concluded still has to be closed.
+              </p>
+            )}
             <ConditionsTable conditions={card.conditions} />
           </section>
 
@@ -90,10 +125,26 @@ export function ReadinessCardV2({
             </p>
           </section>
 
+          {/* Third-party validation input — NOT a readiness score */}
+          {tool.bodhScore && (
+            <section className="mt-8">
+              <h2 className="mb-1 border-b border-[#D9D5C8] pb-1.5 font-serif text-xl text-[#0E1411]">
+                BODH validation score
+              </h2>
+              <p className="mb-3 text-sm leading-relaxed text-[#6B766F]">
+                A third-party validation platform&apos;s measurement of the model. It is an INPUT to
+                the clinical and fairness gates, not a readiness verdict — the framework asks
+                whether the tool works here, which is a different question from whether the model
+                is accurate.
+              </p>
+              <BodhScore score={tool.bodhScore} />
+            </section>
+          )}
+
           {/* Evidence */}
           <section className="mt-8">
             <h2 className="mb-3 border-b border-[#D9D5C8] pb-1.5 font-serif text-xl text-[#0E1411]">
-              Evidence on file
+              Attached evidence
             </h2>
             <EvidenceList evidence={evidence} />
           </section>
@@ -117,7 +168,7 @@ export function ReadinessCardV2({
       <ChangeLog card={card} />
 
       {/* The remediation entry point — a route, not a modal. */}
-      {card.conditions.length > 0 && (
+      {showRemediationLink && card.conditions.length > 0 && (
         <Link
           href={`/submit/${tool.slug}/remediate`}
           className="flex items-center justify-between gap-4 rounded-xl border border-[#0F6E56]/40 bg-[#E3F0EB]/50 px-5 py-4 transition-colors hover:bg-[#E3F0EB]"

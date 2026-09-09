@@ -36,8 +36,9 @@ import { softenCertainty } from "./soften-certainty";
 export type CoverageBand = "high" | "moderate" | "limited";
 
 /**
- * A gap between what the vendor declared and what is on file. Two checkable
- * tests, neither of which requires reading a document:
+ * A gap between what the vendor declared and what is on file.
+ *
+ * THREE checkable tests, none of which requires reading a document:
  *
  *   UNEVIDENCED  declared at all, in a cluster whose questions cannot be
  *                answered by assertion — safety, legality, consent, data
@@ -46,14 +47,26 @@ export type CoverageBand = "high" | "moderate" | "limited";
  *   NON_TRANSFERRING  declared at all, where EVERY document bound to the gate
  *                     is generalisability-limited. The evidence exists; it was
  *                     generated somewhere this deployment is not.
+ *
+ *   UNCORROBORATED  documents exist and do transfer, but the declaration sits
+ *                   above what they can carry — every one of them is
+ *                   vendor-generated and states a limitation.
+ *
+ * ONE DERIVATION, TWO SCREENS. The declaration step and the assessment step
+ * both call `findDiscrepancies`. They used to compute their own, and reported
+ * five and two for the same submission — two screens disagreeing about one
+ * fact, which is the same class of defect as a card that issues off assertion
+ * alone. The acceptance harness asserts the two agree.
  */
-export type DiscrepancyKind = "UNEVIDENCED" | "NON_TRANSFERRING";
+export type DiscrepancyKind = "UNEVIDENCED" | "NON_TRANSFERRING" | "UNCORROBORATED";
 
 export type DeclarationDiscrepancy = {
   gateId: string;
   itemId: string;
   kind: DiscrepancyKind;
   declared: Level;
+  /** What the bound documents can carry on their own. */
+  supported: Level;
   explanation: string;
 };
 
@@ -101,11 +114,17 @@ function boundItems(evidence: Evidence[]): Map<string, Evidence[]> {
   return map;
 }
 
-export function runAssessment(input: AssessmentRunInput): AssessmentRun {
-  const bound = boundItems(input.evidence);
-  const discrepancies: DeclarationDiscrepancy[] = [];
+/**
+ * THE single derivation of doc-versus-claim gaps. Both S4 and S5 call this.
+ */
+export function findDiscrepancies(
+  declaration: SelfDeclaration,
+  evidence: Evidence[]
+): DeclarationDiscrepancy[] {
+  const bound = boundItems(evidence);
+  const out: DeclarationDiscrepancy[] = [];
 
-  for (const [gateId, declared] of Object.entries(input.declaration.gateAnswers)) {
+  for (const [gateId, declared] of Object.entries(declaration.gateAnswers)) {
     if (declared === undefined) continue;
     const item = itemForLegacyGate(gateId);
     if (!item) continue;
@@ -118,11 +137,12 @@ export function runAssessment(input: AssessmentRunInput): AssessmentRun {
       // handling. Elsewhere a declaration stands on its own until an assessor
       // looks, so an unevidenced D2 or D3 gate is not flagged here.
       if (trialBlocking && declared >= 1) {
-        discrepancies.push({
+        out.push({
           gateId,
           itemId: item.id,
           kind: "UNEVIDENCED",
           declared,
+          supported: 0,
           explanation: softenCertainty(
             `Declared, with no document on file bound to ${item.id}. This gate sits in ${item.clusterCode}, where a claim cannot stand on assertion.`
           ),
@@ -132,17 +152,40 @@ export function runAssessment(input: AssessmentRunInput): AssessmentRun {
     }
 
     if (declared >= 1 && docs.every((d) => d.generalisability.limited)) {
-      discrepancies.push({
+      out.push({
         gateId,
         itemId: item.id,
         kind: "NON_TRANSFERRING",
         declared,
+        supported: 0,
         explanation: softenCertainty(
           `Declared, and every document bound to ${item.id} was generated somewhere this deployment is not. The evidence exists; whether it carries here is a judgement for an assessor.`
         ),
       });
+      continue;
+    }
+
+    const supported = supportedLevel(docs);
+    if (declared > supported) {
+      out.push({
+        gateId,
+        itemId: item.id,
+        kind: "UNCORROBORATED",
+        declared,
+        supported,
+        explanation: softenCertainty(
+          `Declared above what the documents bound to ${item.id} can carry on their own — each is vendor-generated and states a limitation. Admissible, and not yet independent of the claimant.`
+        ),
+      });
     }
   }
+
+  return out;
+}
+
+export function runAssessment(input: AssessmentRunInput): AssessmentRun {
+  const bound = boundItems(input.evidence);
+  const discrepancies = findDiscrepancies(input.declaration, input.evidence);
 
   // ── unsupported gates: nothing on file to read ───────────────────────────
   // TWO SOURCES, and the second one closes the loophole that matters.
@@ -247,48 +290,15 @@ export function supportedLevel(docs: Evidence[]): Level {
   return clean.length > 0 ? 2 : 1;
 }
 
-export type DeclarationGap = {
-  gateId: string;
-  itemId: string;
-  declared: Level;
-  supported: Level;
-};
-
 /**
- * Gates where the declaration sits above what the attached evidence can carry.
- *
- * This is the number behind "N declarations exceed what the attached evidence
- * currently shows". It is derived on every keystroke from the current answers
- * and the currently attached documents, so a vendor watches it move as they
- * attach — which is the point of leaving the panel live.
- *
- * It is NOT a verdict and must never be rendered as one. A gap here is a
- * prompt to attach something, not a finding about the tool.
+ * The S4 band's count. A thin wrapper so the declaration step and the
+ * assessment step can never report different numbers for the same submission.
  */
+export type DeclarationGap = DeclarationDiscrepancy;
+
 export function declarationsExceedingEvidence(
   declaration: SelfDeclaration,
   evidence: Evidence[]
 ): DeclarationGap[] {
-  const bound = boundItems(evidence);
-  const out: DeclarationGap[] = [];
-
-  for (const [gateId, declared] of Object.entries(declaration.gateAnswers)) {
-    if (declared === undefined) continue;
-    const item = itemForLegacyGate(gateId);
-    if (!item) continue;
-
-    const docs = bound.get(item.id) ?? [];
-    // A gate with NOTHING attached is a coverage gap, not a conflict between a
-    // declaration and a document. It is already visible as the document count
-    // and, where it carries a condition, as an unsupported gate. Counting it
-    // here too would put nine of CerviAI's seventeen gates in a band that is
-    // supposed to draw the eye to the two or three worth arguing about.
-    if (docs.length === 0) continue;
-
-    const supported = supportedLevel(docs);
-    if (declared > supported) {
-      out.push({ gateId, itemId: item.id, declared, supported });
-    }
-  }
-  return out;
+  return findDiscrepancies(declaration, evidence);
 }

@@ -12,7 +12,7 @@ import {
   runAssessment,
   type AssessmentRun,
 } from "@/lib/engine/assessment-run";
-import { getRegisteredSubmission } from "@/lib/mock/cards-v2";
+import { getRegisteredSubmission, seededDeclaration } from "@/lib/mock/cards-v2";
 import { cn } from "@/lib/utils";
 
 /**
@@ -52,12 +52,11 @@ export default function AssessPage() {
     (async () => {
       const v = await getCardV2(id);
       if (!live || !v) { setView(null); return; }
-      const registered = getRegisteredSubmission(id);
+      // One resolver for both a wizard-built submission and a seeded fixture,
+      // so this screen and the card cannot disagree about what was declared.
       const declaration =
-        registered?.declaration ??
-        // Seeded tools carry their declaration inside the v2 setup; the card is
-        // built from it, so the conditions on the card are the same evidence of
-        // it. Fall back to an empty declaration rather than inventing answers.
+        getRegisteredSubmission(id)?.declaration ??
+        seededDeclaration(id) ??
         { submissionId: `sub-${id}`, gateAnswers: {}, clarificationAnswers: [] };
       setView(v);
       setRun(

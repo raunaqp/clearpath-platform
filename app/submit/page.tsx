@@ -35,6 +35,8 @@ function docsForTool(toolId: string): Document[] {
 
 type FormState = {
   toolName: string;
+  toolVersion: string;
+  modelVersion: string;
   company: string;
   founder: string;
   website: string;
@@ -47,6 +49,8 @@ type FormState = {
 
 const EMPTY: FormState = {
   toolName: "",
+  toolVersion: "",
+  modelVersion: "",
   company: "",
   founder: "",
   website: "",
@@ -148,6 +152,8 @@ export default function SubmitWizard() {
     const { vendor, tool, gateAnswers } = ex.input;
     setForm({
       toolName: tool.name,
+      toolVersion: ex.toolVersion ?? "",
+      modelVersion: ex.modelVersion ?? "",
       company: vendor.name,
       founder: vendor.founder,
       website: vendor.website,
@@ -230,8 +236,8 @@ export default function SubmitWizard() {
           ...e,
           submissionId: `sub-${created.slug}`,
         })),
-        toolVersion: form.toolName,
-        modelVersion: "not stated",
+        toolVersion: form.toolVersion ? `${form.toolName} ${form.toolVersion}` : form.toolName,
+        modelVersion: form.modelVersion || "not stated",
         issuedAt: new Date().toISOString(),
       });
 
@@ -321,6 +327,19 @@ export default function SubmitWizard() {
             </Field>
             <Field label="Founder">
               <TextInput value={form.founder} onChange={(v) => set("founder", v)} placeholder="Name" />
+            </Field>
+            {/*
+              The card header renders both of these. Without them a fresh
+              submission shows "not stated" on the screen most meant to look
+              deliberate — and a readiness card for build 2.3.1 says nothing
+              about 2.4, so the version is part of what the card is a claim
+              about, not decoration.
+            */}
+            <Field label="Tool version" hint="The build being assessed. A card is a claim about this version, not the product.">
+              <TextInput value={form.toolVersion} onChange={(v) => set("toolVersion", v)} placeholder="e.g. 2.3.1" />
+            </Field>
+            <Field label="Model version" hint="The model build behind it, where there is one.">
+              <TextInput value={form.modelVersion} onChange={(v) => set("modelVersion", v)} placeholder="e.g. cerv-vision-2026.07" />
             </Field>
             <Field label="Website">
               <TextInput value={form.website} onChange={(v) => set("website", v)} placeholder="example.in" />

@@ -12,7 +12,17 @@ export type WizardExample = {
   key: string;
   label: string;
   hint: string;
+  /** The build being assessed. The card header renders it. */
+  toolVersion?: string;
+  /** The model build behind it, where there is one. */
+  modelVersion?: string;
   input: CreateAssessmentInput;
+};
+
+/** Versions for the seeded examples, matching their v2 fixtures. */
+const EXAMPLE_VERSIONS: Record<string, { toolVersion: string; modelVersion: string }> = {
+  "tool-cerviai": { toolVersion: "2.3.1", modelVersion: "cerv-vision-2026.07" },
+  "tool-retinascan": { toolVersion: "1.8", modelVersion: "retina-dr-2026.03" },
 };
 
 function build(toolId: string, hint: string): WizardExample {
@@ -22,6 +32,7 @@ function build(toolId: string, hint: string): WizardExample {
     key: toolId,
     label: tool.name,
     hint,
+    ...EXAMPLE_VERSIONS[toolId],
     input: {
       vendor: {
         name: vendor.name,
