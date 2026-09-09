@@ -9,8 +9,21 @@ import { z } from "zod";
  * the derivation.
  */
 
-/** Has the hospital run its own intake audit yet? */
-export const AuditStateEnum = z.enum(["not_run", "complete"]);
+/**
+ * Has the hospital run its own intake audit yet?
+ *
+ * `in_progress` is the hospital having received something and being partway
+ * through it — the state Phase 6 needs and this model had no way to say. It
+ * derives to a distinct "Under assessment" stage rather than sitting silently
+ * as "New", because a hospital that has started is telling the innovator
+ * something different from one that has not opened it. It is a delay, never a
+ * denial, and there is deliberately no rejection reachable from it: declining
+ * lives in `decision`, after an audit has actually happened.
+ *
+ * Purely additive — no seeded submission uses it, so every existing row derives
+ * exactly the stage it derived before.
+ */
+export const AuditStateEnum = z.enum(["not_run", "in_progress", "complete"]);
 export type AuditState = z.infer<typeof AuditStateEnum>;
 
 /** The hospital's decision. Only meaningful once audit = complete. */

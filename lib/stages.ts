@@ -57,6 +57,12 @@ export function submissionStage(sub: Submission, slug?: string): SubmissionStage
   if (sub.audit === "not_run") {
     return { index: 0, label: "New", badge: { label: "New", tint: BADGE.new }, action: { label: "Run our audit", href: `${base}/audit` } };
   }
+  if (sub.audit === "in_progress") {
+    // Started, not finished. Distinct from "New" so the innovator can see the
+    // difference between unopened and in hand — and it is a delay, not a
+    // verdict, so it carries no outcome.
+    return { index: 0, label: "Under assessment", badge: { label: "Under assessment", tint: BADGE.evaluated }, action: { label: "Continue audit", href: `${base}/audit` } };
+  }
   if (sub.decision === "pending") {
     return { index: 1, label: "Evaluated", badge: { label: "Evaluated", tint: BADGE.evaluated }, action: { label: "Decide", href: `${base}/audit` } };
   }
