@@ -10,7 +10,8 @@
     "engine:smoke": "tsx scripts/engine-smoke.ts",
     "docs:gen": "tsx scripts/gen-sample-docs.ts",
     "verify:browser": "node scripts/browser-verify.mjs",
-    "verify:phase1": "tsx scripts/phase1-acceptance.ts"
+    "verify:phase1": "tsx scripts/phase1-acceptance.ts",
+    "verify:phase2": "tsx scripts/phase2-acceptance.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
