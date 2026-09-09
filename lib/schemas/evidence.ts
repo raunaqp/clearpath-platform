@@ -79,6 +79,16 @@ export const EvidenceSchema = z.object({
   /** Static asset path in the mock layer; absent where nothing is on file. */
   path: z.string().optional(),
   provenance: ProvenanceSchema,
+  /**
+   * One limitation, stated by the submitter.
+   *
+   * Required of every document, seeded or uploaded. A vendor who has to name
+   * what their own study does not show writes a more useful sentence than any
+   * reviewer could infer, and a document with no stated limitation is a claim
+   * rather than evidence. `null` only where a document type genuinely has none
+   * to state (a licence is a fact, not a finding).
+   */
+  limitation: z.string().nullable(),
   generalisability: GeneralisabilitySchema,
   expired: z.boolean(),
 });

@@ -112,6 +112,10 @@ const CADRE_MAP: Record<CareLevel, OperatorCadre> = {
 
 function derivedContext(tool: Tool): SubmissionContext {
   return {
+    entity: { name: "Not yet declared", verified: false, conflictsDeclared: [] },
+    buildStatus: "DEPLOYABLE_BUILD",
+    exactClaim: tool.intendedUse,
+    outOfScope: [],
     path: "PUBLIC_PROCUREMENT",
     careLevel: CARE_LEVEL_MAP[tool.careLevel],
     operatorCadre: CADRE_MAP[tool.careLevel],
@@ -166,6 +170,7 @@ function derivedEvidence(tool: Tool, context: SubmissionContext): Evidence[] {
         documentDate: "2026-01-01",
         validUntil: null,
       },
+      limitation: d.statusNote ?? null,
       generalisability: { limited: false, reason: null },
       expired: false,
     });
@@ -301,6 +306,7 @@ function remediationEvidence(slug: string, r: AppliedRemediation): Evidence | un
       documentDate: r.issuedAt.slice(0, 10),
       validUntil: null,
     },
+    limitation: null,
     generalisability: { limited: false, reason: null },
     expired: false,
   };

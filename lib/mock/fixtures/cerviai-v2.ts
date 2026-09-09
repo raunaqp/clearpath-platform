@@ -42,10 +42,22 @@ export const CERVIAI_G1_ITEM = legacyGateToItemId("G1")!;
 // ═════════════════════════════════════════════════════════════════════════
 
 export const CERVIAI_CONTEXT: SubmissionContext = {
+  entity: { name: "CerviAI Health", verified: true, conflictsDeclared: [] },
+  buildStatus: "DEPLOYABLE_BUILD",
+  exactClaim:
+    "Flags cervical abnormalities from VIA and colposcopy images for colposcopy referral, " +
+    "in women 30-65 screened at CHC level by a staff nurse.",
+  // Declared by the vendor BEFORE seeing a result, which is what makes an
+  // exclusion worth anything.
+  outOfScope: [
+    "Pregnancy",
+    "Post-treatment surveillance",
+    "Sub-centre placement",
+  ],
   path: "PUBLIC_PROCUREMENT",
   careLevel: "CHC",
   operatorCadre: "STAFF_NURSE",
-  programmeLine: "Cervical cancer screening",
+  programmeLine: "NP-NCD cervical cancer screening",
   geography: "Coimbatore district, Tamil Nadu",
   // Two modes, not one: the same device in outreach camps and again in the
   // clinic queue, with the same operator.
@@ -97,6 +109,8 @@ type Seed = {
   documentDate: string;
   validUntil?: string | null;
   path?: string;
+  /** One stated limitation. null only where the document type has none. */
+  limitation: string | null;
 };
 
 /**
@@ -125,6 +139,7 @@ function toEvidence(s: Seed): Evidence {
       documentDate: s.documentDate,
       validUntil: s.validUntil ?? null,
     },
+    limitation: s.limitation,
     generalisability: { limited: false, reason: null },
     expired: false,
   };
@@ -132,17 +147,22 @@ function toEvidence(s: Seed): Evidence {
 
 const SEEDS: Seed[] = [
   {
+    // TRIPS generalisability on both axes against a CHC / staff-nurse context:
+    // a single non-Indian centre, read by specialists. It remains the strongest
+    // evidence on file and it is still accepted — flagged, not discounted.
     id: "ev-cerviai-validation",
-    itemRefs: [CERVIAI_G1_ITEM],
+    itemRefs: [CERVIAI_G1_ITEM, legacyGateToItemId("G17")!],
     type: "VALIDATION_STUDY",
     independence: "INDEPENDENT",
     name: "Independent validation study",
-    generatedBy: "European screening consortium",
-    // Single-centre and non-Indian — this is what keeps G1 at "requires support".
+    generatedBy: "University screening consortium",
     setting: "private tertiary hospital",
     cadre: "specialist",
-    sampleN: 890,
-    documentDate: "2025-10-02",
+    sampleN: 4200,
+    documentDate: "2026-03-10",
+    limitation:
+      "Single centre, non-Indian cohort, images read by specialists. It does not " +
+      "show how the tool performs when a staff nurse operates it in a camp.",
     path: "/sample-docs/cerviai-validation-study.pdf",
   },
   {
@@ -155,14 +175,16 @@ const SEEDS: Seed[] = [
     setting: "community health centre",
     cadre: "staff nurse",
     sampleN: null,
-    documentDate: "2025-04-12",
+    documentDate: "2026-01-15",
     // Runs past the card's own 12-month expiry, so the DEFAULT sets the date.
-    validUntil: "2028-06-30",
+    validUntil: "2028-01-15",
+    // A licence is a fact, not a finding — there is nothing for it to fail to show.
+    limitation: null,
     path: "/sample-docs/cerviai-cdsco-md15.pdf",
   },
   {
     id: "ev-cerviai-dpdp",
-    itemRefs: [CERVIAI_G15_ITEM],
+    itemRefs: [legacyGateToItemId("G14")!, CERVIAI_G15_ITEM],
     type: "AUDIT",
     independence: "VENDOR_GENERATED",
     name: "DPDP privacy policy",
@@ -170,20 +192,30 @@ const SEEDS: Seed[] = [
     setting: "community health centre",
     cadre: "staff nurse",
     sampleN: null,
-    documentDate: "2026-02-20",
+    documentDate: "2026-08-20",
+    limitation:
+      "A secondary processing environment is hosted outside India. The policy " +
+      "states the arrangement; it does not evidence a residency control over it.",
     path: "/sample-docs/cerviai-dpdp-policy.pdf",
   },
   {
     id: "ev-cerviai-eval",
-    itemRefs: [legacyGateToItemId("G2")!, legacyGateToItemId("G3")!],
+    itemRefs: [
+      legacyGateToItemId("G2")!,
+      legacyGateToItemId("G3")!,
+      legacyGateToItemId("G8")!,
+    ],
     type: "STUDY",
-    independence: "PARTNER_GENERATED",
+    independence: "VENDOR_GENERATED",
     name: "Clinical evaluation report",
-    generatedBy: "District health society",
+    generatedBy: "CerviAI Health",
     setting: "community health centre",
     cadre: "staff nurse",
-    sampleN: 340,
-    documentDate: "2026-03-18",
+    sampleN: 1150,
+    documentDate: "2026-05-04",
+    limitation:
+      "1,150 images across two sites, analysed by the vendor. No independent " +
+      "replication.",
     path: "/sample-docs/cerviai-clinical-eval-report.pdf",
   },
   {
@@ -191,12 +223,15 @@ const SEEDS: Seed[] = [
     itemRefs: [legacyGateToItemId("G14")!],
     type: "CONSENT_ARTEFACT",
     independence: "INDEPENDENT",
-    name: "Ethics approval and consent artefact",
+    name: "Ethics approval",
     generatedBy: "Institutional ethics committee",
     setting: "community health centre",
     cadre: "staff nurse",
     sampleN: null,
-    documentDate: "2026-01-30",
+    documentDate: "2026-02-11",
+    limitation:
+      "Covers the validation study only. It is not an approval for routine " +
+      "screening use.",
     path: "/sample-docs/cerviai-ethics-approval.pdf",
   },
 ];
@@ -223,6 +258,9 @@ export const CERVIAI_REMEDIATION_EVIDENCE: Evidence = toEvidence({
   cadre: "staff nurse",
   sampleN: null,
   documentDate: "2026-09-20",
+  limitation:
+    "A contractual commitment to India-resident processing. It is not an audit " +
+    "of the environment it commits to.",
   path: "/sample-docs/cerviai-dpdp-policy.pdf",
 });
 

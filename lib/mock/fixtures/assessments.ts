@@ -35,6 +35,12 @@ export const ASSESSMENT_DATE = "2026-09-09T00:00:00.000Z";
  * pointed at a sub-centre with no operator would need its own card.
  */
 export const NEOSCAN_CONTEXT: SubmissionContext = {
+  entity: { name: "NeoScan Devices", verified: true, conflictsDeclared: [] },
+  buildStatus: "DEPLOYABLE_BUILD",
+  exactClaim:
+    "Measures haemoglobin at the point of care and recommends referral for " +
+    "antenatal anaemia, in pregnant women screened by an ANM.",
+  outOfScope: ["Paediatric use", "Diagnosis of anaemia subtype"],
   path: "PUBLIC_PROCUREMENT",
   careLevel: "DISTRICT_HOSPITAL",
   operatorCadre: "ANM",
@@ -53,6 +59,10 @@ export const NEOSCAN_CONTEXT: SubmissionContext = {
 
 /** A generic public-procurement PHC context for the routing fixtures. */
 const PHC_CONTEXT: SubmissionContext = {
+  entity: { name: "Demo vendor", verified: false, conflictsDeclared: [] },
+  buildStatus: "DEPLOYABLE_BUILD",
+  exactClaim: "Screens for a condition at PHC level and informs a clinician.",
+  outOfScope: [],
   path: "PUBLIC_PROCUREMENT",
   careLevel: "PHC",
   operatorCadre: "STAFF_NURSE",
@@ -122,6 +132,9 @@ function toEvidence(submissionId: string, s: EvSeed): Evidence {
       documentDate: s.documentDate,
       validUntil: s.validUntil ?? null,
     },
+    // Routing fixtures exist to exercise the routing rule, not the evidence
+    // form; a stated limitation is not what is under test there.
+    limitation: null,
     generalisability: { limited: false, reason: null },
     expired: false,
   };

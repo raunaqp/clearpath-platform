@@ -73,7 +73,65 @@ export const TargetPopulationSchema = z.object({
 });
 export type TargetPopulation = z.infer<typeof TargetPopulationSchema>;
 
+/**
+ * The submitting entity.
+ *
+ * `verified` is about the ORGANISATION, not the tool — whether ClearPath has
+ * confirmed the company is who it says it is. It says nothing about the
+ * evidence, and the card must never let the two be read as one.
+ *
+ * `conflictsDeclared` is a list rather than a boolean because an empty list and
+ * an undeclared conflict look identical in a boolean, and the difference is the
+ * whole value of asking.
+ */
+export const SubmittingEntitySchema = z.object({
+  name: z.string(),
+  verified: z.boolean(),
+  conflictsDeclared: z.array(z.string()),
+});
+export type SubmittingEntity = z.infer<typeof SubmittingEntitySchema>;
+
+/**
+ * How far along the thing actually is.
+ *
+ * Only DEPLOYABLE_BUILD may be assessed. A readiness assessment of a prototype
+ * would be a readiness assessment of an intention: the questions the framework
+ * asks — does it fail safe under real caseload, do operators keep using it —
+ * have no answers yet, and producing a card anyway would hand a vendor a
+ * document that outlives the caveat attached to it.
+ *
+ * The screen says so plainly. Silently producing a weak card would be worse:
+ * the vendor would read it as a hard assessment rather than a category error.
+ */
+export const BuildStatusEnum = z.enum(["DEPLOYABLE_BUILD", "PROTOTYPE", "CONCEPT"]);
+export type BuildStatus = z.infer<typeof BuildStatusEnum>;
+
+export const BUILD_STATUS_LABEL: Record<BuildStatus, string> = {
+  DEPLOYABLE_BUILD: "Deployable build",
+  PROTOTYPE: "Prototype",
+  CONCEPT: "Concept",
+};
+
+/** Whether this build can be assessed at all. */
+export function canBeAssessed(status: BuildStatus): boolean {
+  return status === "DEPLOYABLE_BUILD";
+}
+
 export const SubmissionContextSchema = z.object({
+  entity: SubmittingEntitySchema,
+  buildStatus: BuildStatusEnum,
+  /**
+   * The single sentence the tool is being assessed against. Not marketing copy:
+   * everything downstream — which items apply, what evidence has to cover, what
+   * the verdict is a verdict ABOUT — is scoped by this one line.
+   */
+  exactClaim: z.string(),
+  /**
+   * What the vendor states the tool is NOT for. Declared up front rather than
+   * discovered later, because an exclusion a vendor writes down before seeing
+   * their result is worth more than one they add after.
+   */
+  outOfScope: z.array(z.string()),
   path: PathEnum,
   careLevel: CareLevelEnum,
   operatorCadre: OperatorCadreEnum,
