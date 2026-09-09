@@ -88,7 +88,12 @@ export type ClarificationAnswer = z.infer<typeof ClarificationAnswerSchema>;
  */
 export const SelfDeclarationSchema = z.object({
   submissionId: z.string(),
-  gateAnswers: z.record(LegacyGateIdEnum, LevelEnum),
+  /**
+   * PARTIAL by design. A vendor answers the 17 gates on their own path — the
+   * public D2 gates or the private GP1-GP5, never both — so requiring every
+   * key would make an honest declaration invalid.
+   */
+  gateAnswers: z.partialRecord(LegacyGateIdEnum, LevelEnum),
   clarificationAnswers: z.array(ClarificationAnswerSchema),
 });
 export type SelfDeclaration = z.infer<typeof SelfDeclarationSchema>;

@@ -62,15 +62,20 @@ export type DiscrepancyInput = {
 
 /**
  * Materiality — what makes one gap worth asking about before another.
+ * Gate items first, then by gap size, as specified.
+ *
  *   +100  the item is a gate at all
- *   +40   no evidence was found (a claim with nothing behind it beats a
- *         claim that is merely optimistic — there is nothing to read)
- *   +10 per level of gap
+ *   +10   per level of gap between the claim and what the evidence reaches
+ *   +5    no evidence was found at all — a small tie-breaker on top of the
+ *         gap, because a claim with nothing behind it is marginally worse
+ *         than one merely optimistic. Deliberately small: it must not let a
+ *         one-level unevidenced claim outrank a two-level contradicted one.
  */
 function materialityOf(item: AssessmentItem, claimed: Level, supports: Level | null): number {
+  const gap = claimed - (supports ?? 0);
   let m = item.isGate ? 100 : 0;
-  if (supports === null) m += 40;
-  else m += Math.abs(claimed - supports) * 10;
+  m += Math.max(0, gap) * 10;
+  if (supports === null) m += 5;
   return m;
 }
 
