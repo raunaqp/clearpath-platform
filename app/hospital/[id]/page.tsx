@@ -15,13 +15,14 @@ import {
   getSubmissionBySlug,
   getTool,
   getReadinessCard,
-  getDocumentsByIds,
+  getCardV2,
   getAuditBySubmission,
   getHospital,
   getDeploymentBySubmission,
   startPilot,
 } from "@/lib/mock/api";
-import { ReadinessCard } from "@/components/card/ReadinessCard";
+import { ReadinessCardV2 } from "@/components/card/v2/ReadinessCardV2";
+import type { CardV2View } from "@/lib/mock/cards-v2";
 import { VerdictComparison } from "@/components/audit/VerdictComparison";
 import { StagePathway } from "@/components/hospital/StagePathway";
 import { submissionStage } from "@/lib/stages";
@@ -33,7 +34,7 @@ export default function SubmissionDetail() {
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [tool, setTool] = useState<Tool | null>(null);
   const [card, setCard] = useState<ToolReadinessCard | null>(null);
-  const [docs, setDocs] = useState<Document[]>([]);
+  const [view, setView] = useState<CardV2View | null>(null);
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [audit, setAudit] = useState<AuditResult | null>(null);
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
@@ -64,14 +65,14 @@ export default function SubmissionDetail() {
         getHospital(sub.hospitalId),
         getDeploymentBySubmission(sub.id),
       ]);
-      const d = c ? await getDocumentsByIds(c.docIds) : [];
+      const v = t ? await getCardV2(t.slug) : undefined;
       if (!live) return;
       // Redirect a legacy id URL to the clean slug.
       if (t && id !== t.slug) router.replace(`/hospital/${t.slug}`);
       setSubmission(sub);
       setTool(t ?? null);
       setCard(c ?? null);
-      setDocs(d);
+      setView(v ?? null);
       setAudit(existingAudit ?? null);
       setHospital(h ?? null);
       setDeploymentId(dep?.id ?? null);
@@ -90,7 +91,7 @@ export default function SubmissionDetail() {
     );
   }
 
-  if (!submission || !tool || !card) {
+  if (!submission || !tool || !card || !view) {
     return (
       <div className="mx-auto max-w-lg py-16 text-center">
         <p className="font-serif text-xl text-ink">Submission not found</p>
@@ -138,8 +139,14 @@ export default function SubmissionDetail() {
           </Link>
         </div>
         <VerdictComparison
-          vendorVerdict={card.verdict}
-          vendorScore={card.overallScore}
+          vendorVerdict={view.card.verdict}
+          vendorGates={{
+            pass: view.card.gateSummary.pass,
+            total:
+              view.card.gateSummary.pass +
+              view.card.gateSummary.fail +
+              view.card.gateSummary.unscored,
+          }}
           auditVerdict={audit?.verdict ?? null}
           auditScore={audit?.score ?? null}
           auditor={hospital?.name ?? "Our hospital"}
@@ -228,7 +235,18 @@ export default function SubmissionDetail() {
       </section>
 
       {/* The vendor's Readiness Card — read-only (card + docs + gate grid) */}
-      <ReadinessCard card={card} tool={tool} docs={docs} />
+      {/*
+        The SAME card the innovator sees, read-only. Before this the hospital
+        got the v1 card here — score disc, percentage dimensions — while the
+        vendor got v2. One submission, two cards.
+      */}
+      <ReadinessCardV2
+        card={view.card}
+        tool={view.tool}
+        evidence={view.evidence}
+        contextIsReal={view.contextIsReal}
+        showRemediationLink={false}
+      />
     </div>
   );
 }

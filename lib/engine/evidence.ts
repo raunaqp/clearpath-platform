@@ -91,10 +91,20 @@ export function computeGeneralisability(
     );
   }
 
-  const n = pop.sampleN === null ? "" : ` (n=${pop.sampleN})`;
+  /**
+   * The reason does NOT restate the document's name.
+   *
+   * It is always rendered directly beneath the document it belongs to, so
+   * repeating the title there is noise — and it made the name appear twice in
+   * the page text, which is indistinguishable from the document itself being
+   * listed twice. Callers that need the name are holding the Evidence.
+   */
+  const n = pop.sampleN === null ? "" : ` (n=${pop.sampleN.toLocaleString("en-IN")})`;
+  const [first, ...rest] = parts;
+  const sentence = [first.charAt(0).toUpperCase() + first.slice(1), ...rest].join("; ");
   return {
     limited: true,
-    reason: `${evidence.name}${n}: ${parts.join("; ")}. Accepted as evidence and flagged — an assessor decides what it is worth here.`,
+    reason: `${sentence}${n}. Accepted as evidence and flagged — an assessor decides what it is worth here.`,
   };
 }
 

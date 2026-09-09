@@ -34,9 +34,11 @@ import { EvidenceList } from "./EvidenceList";
  * Also gone: "0 required fixes and 2 to firm up", which counts paperwork. The
  * replacement says whether anyone can start.
  *
- * This is a SEPARATE component from `components/card/ReadinessCard.tsx`. That
- * one still renders the v1 shape for /registry and /hospital, which read
- * through the legacy adapter and are out of scope this phase.
+ * THE ONLY CARD. The v1 component this replaced was deleted once the last of
+ * its four importers moved here — the innovator, the registry detail, the
+ * hospital submission view and the card preview. One submission had been
+ * rendering as two different cards depending on who opened it, which is
+ * invisible in a linear walkthrough and obvious to anyone who clicks around.
  */
 export function ReadinessCardV2({
   card,

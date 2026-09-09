@@ -7,6 +7,7 @@ import { ArrowLeft, Check, X, Sparkles } from "lucide-react";
 import type { GateStatus } from "@/lib/schemas/gate";
 import type { Tool } from "@/lib/schemas/tool";
 import type { ToolReadinessCard } from "@/lib/schemas/readiness-card";
+import type { CardV2View } from "@/lib/mock/cards-v2";
 import type { Hospital } from "@/lib/schemas/hospital";
 import type { Submission } from "@/lib/schemas/submission";
 import type { Document } from "@/lib/schemas/document";
@@ -18,6 +19,7 @@ import {
   getSubmissionBySlug,
   getTool,
   getReadinessCard,
+  getCardV2,
   getHospital,
   getDocumentsByIds,
   getAiSuggestion,
@@ -46,6 +48,9 @@ export default function AuditPage() {
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [tool, setTool] = useState<Tool | null>(null);
   const [card, setCard] = useState<ToolReadinessCard | null>(null);
+  // The v2 card, for the vendor side of the comparison. The audit itself is
+  // still the hospital's own 13-gate engine and is untouched.
+  const [cardV2, setCardV2] = useState<CardV2View | null>(null);
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [docs, setDocs] = useState<Document[]>([]);
   const [suggestion, setSuggestion] = useState<string | null>(null);
@@ -72,11 +77,13 @@ export default function AuditPage() {
       ]);
       const d = c ? await getDocumentsByIds(c.docIds) : [];
       const s = await getAiSuggestion(sub.toolId);
+      const v2 = t ? await getCardV2(t.slug) : undefined;
       if (!live) return;
       if (t && id !== t.slug) router.replace(`/hospital/${t.slug}/audit`);
       setSubmission(sub);
       setTool(t ?? null);
       setCard(c ?? null);
+      setCardV2(v2 ?? null);
       setHospital(h ?? null);
       setDocs(d);
       setSuggestion(s);
@@ -183,8 +190,15 @@ export default function AuditPage() {
 
       {/* Two independent assessments — vendor vs our audit (updates live) */}
       <VerdictComparison
-        vendorVerdict={card.verdict}
-        vendorScore={card.overallScore}
+        vendorVerdict={cardV2?.card.verdict ?? "CONDITIONALLY_DEPLOYABLE"}
+        vendorGates={{
+          pass: cardV2?.card.gateSummary.pass ?? 0,
+          total: cardV2
+            ? cardV2.card.gateSummary.pass +
+              cardV2.card.gateSummary.fail +
+              cardV2.card.gateSummary.unscored
+            : 17,
+        }}
         auditVerdict={live.verdict}
         auditScore={live.score}
         auditor={auditor}

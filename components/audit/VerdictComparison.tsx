@@ -1,6 +1,6 @@
-import type { ToolVerdict } from "@/lib/schemas/readiness-card";
+import type { CardVerdict, ToolVerdict } from "@/lib/schemas/readiness-card";
 import type { AuditVerdict } from "@/lib/schemas/audit";
-import { VERDICT_CARD } from "@/lib/ui";
+import { CARD_VERDICT_STYLE, VERDICT_CARD } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 
 /**
@@ -20,13 +20,25 @@ function VerdictPanel({
 }: {
   eyebrow: string;
   sub: string;
-  verdict: ToolVerdict | AuditVerdict | null;
+  verdict: ToolVerdict | AuditVerdict | CardVerdict | null;
   score: number | null;
   scoreLabel: string;
   ours?: boolean;
   pending?: boolean;
 }) {
-  const v = verdict ? VERDICT_CARD[verdict] : null;
+  /**
+   * The vendor side now carries a v2 CardVerdict (four states) while the
+   * hospital's own audit still carries the three-state AuditVerdict from its
+   * own 13-gate engine. Resolve against whichever map owns the value rather
+   * than forcing one into the other's vocabulary — TRIAL_ONLY and
+   * NOT_DEPLOYABLE_IN_CONTEXT have no v1 equivalent, and flattening them here
+   * would put the two-cards problem back on this very screen.
+   */
+  const v = verdict
+    ? (verdict in CARD_VERDICT_STYLE
+        ? CARD_VERDICT_STYLE[verdict as CardVerdict]
+        : VERDICT_CARD[verdict as ToolVerdict | AuditVerdict])
+    : null;
   return (
     <div
       className={cn(
@@ -51,7 +63,7 @@ function VerdictPanel({
       ) : (
         <div className="mt-3 flex items-center gap-3">
           <span className={cn("rounded-lg px-3 py-1.5 font-serif text-sm uppercase tracking-wide", v.solid)}>
-            {v.bandLabel}
+            {"bandLabel" in v ? v.bandLabel : v.label}
           </span>
           {score !== null && (
             <span className="font-serif text-2xl tabular-nums text-[#0E1411]">
@@ -68,14 +80,20 @@ function VerdictPanel({
 
 export function VerdictComparison({
   vendorVerdict,
-  vendorScore,
+  vendorGates,
   auditVerdict,
   auditScore,
   auditor,
   pending,
 }: {
-  vendorVerdict: ToolVerdict;
-  vendorScore: number;
+  vendorVerdict: CardVerdict;
+  /**
+   * How many of the vendor's gates cleared, out of how many. NOT a composite —
+   * the vendor card has no 0-100 score any more, and reintroducing one here
+   * would put the number back on the one screen where a hospital is deciding
+   * whether to trust it.
+   */
+  vendorGates: { pass: number; total: number };
   auditVerdict: AuditVerdict | null;
   auditScore: number | null;
   auditor: string;
@@ -85,10 +103,10 @@ export function VerdictComparison({
     <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-[1fr_auto_1fr]">
       <VerdictPanel
         eyebrow="Vendor's Readiness Card"
-        sub="The vendor's own assessment"
+        sub="Assessed against the vendor's declared context"
         verdict={vendorVerdict}
-        score={vendorScore}
-        scoreLabel="17 tool gates · 4 dimensions"
+        score={null}
+        scoreLabel={`${vendorGates.pass} of ${vendorGates.total} gates clear · 4 dimensions on a 0-2 ladder`}
       />
       <div className="flex items-center justify-center">
         <span className="rounded-full border border-[#D9D5C8] bg-white px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-[#6B766F]">
