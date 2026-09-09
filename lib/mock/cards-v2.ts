@@ -27,6 +27,15 @@ import type { ScoredSet } from "@/lib/engine/score";
 import * as store from "./store";
 import { TOOL_GATE_ANSWERS } from "./fixtures";
 import {
+  RETINASCAN_CONTEXT,
+  RETINASCAN_DECLARATION,
+  RETINASCAN_EVIDENCE,
+  RETINASCAN_ISSUED_AT,
+  RETINASCAN_MODEL_VERSION,
+  RETINASCAN_TOOL_SLUG,
+  RETINASCAN_TOOL_VERSION,
+} from "./fixtures/retinascan-v2";
+import {
   CERVIAI_CONTEXT,
   CERVIAI_DECLARATION,
   CERVIAI_EVIDENCE,
@@ -190,22 +199,38 @@ type ToolSetup = {
   contextIsReal: boolean;
 };
 
+type SeededSetup = Omit<ToolSetup, "tool" | "contextIsReal">;
+
+const SEEDED: Record<string, SeededSetup> = {
+  [CERVIAI_TOOL_SLUG]: {
+    context: CERVIAI_CONTEXT,
+    declaration: CERVIAI_DECLARATION,
+    evidence: CERVIAI_EVIDENCE,
+    issuedAt: CERVIAI_ISSUED_AT,
+    toolVersion: CERVIAI_TOOL_VERSION,
+    modelVersion: CERVIAI_MODEL_VERSION,
+  },
+  [RETINASCAN_TOOL_SLUG]: {
+    context: RETINASCAN_CONTEXT,
+    declaration: RETINASCAN_DECLARATION,
+    evidence: RETINASCAN_EVIDENCE,
+    issuedAt: RETINASCAN_ISSUED_AT,
+    toolVersion: RETINASCAN_TOOL_VERSION,
+    modelVersion: RETINASCAN_MODEL_VERSION,
+  },
+};
+
 function setupFor(slug: string): ToolSetup | undefined {
   const tool = store.getToolBySlug(slug);
   if (!tool) return undefined;
 
-  if (tool.slug === CERVIAI_TOOL_SLUG) {
-    return {
-      tool,
-      context: CERVIAI_CONTEXT,
-      declaration: CERVIAI_DECLARATION,
-      evidence: CERVIAI_EVIDENCE,
-      issuedAt: CERVIAI_ISSUED_AT,
-      toolVersion: CERVIAI_TOOL_VERSION,
-      modelVersion: CERVIAI_MODEL_VERSION,
-      contextIsReal: true,
-    };
-  }
+  /**
+   * Tools with a fully seeded v2 submission — a real declared context, real
+   * provenance on every document. Everything else falls back to a derived
+   * default below, which is marked as such in the UI.
+   */
+  const seeded = SEEDED[tool.slug];
+  if (seeded) return { tool, ...seeded, contextIsReal: true };
 
   const context = derivedContext(tool);
   return {
