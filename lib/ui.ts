@@ -4,7 +4,11 @@
  * coral (coral, never red — "not yet is a feature, not a failure").
  */
 
-import type { ToolVerdict } from "@/lib/schemas/readiness-card";
+import type {
+  BlockingScope,
+  CardVerdict,
+  ToolVerdict,
+} from "@/lib/schemas/readiness-card";
 import type { AuditVerdict } from "@/lib/schemas/audit";
 import type { GateStatus } from "@/lib/schemas/gate";
 import type { SiteGrade, SiteTier } from "@/lib/schemas/site";
@@ -151,3 +155,85 @@ export const DOC_KIND_LABEL: Record<DocKind, string> = {
   manual: "User manual",
   ethics: "Ethics approval",
 };
+
+/**
+ * The four v2 card verdicts. Kept apart from VERDICT_CARD (the v1 three-state
+ * map the hospital screens still use) so neither has to pretend to be the
+ * other. NOT_DEPLOYABLE_IN_CONTEXT is coral, never red — and it is spelled out
+ * in full, because "not deployable" without "in context" is a different and
+ * much larger claim than the assessment makes.
+ */
+export const CARD_VERDICT_STYLE: Record<
+  CardVerdict,
+  { label: string; accent: string; outer: string; solid: string; softTint: string }
+> = {
+  DEPLOYABLE: {
+    label: "DEPLOYABLE",
+    accent: "#3B6D11",
+    outer: "bg-[#EAF3DE] border-[#3B6D11]/40",
+    solid: "bg-[#3B6D11] text-white",
+    softTint: "bg-[#EAF3DE] text-[#3B6D11]",
+  },
+  CONDITIONALLY_DEPLOYABLE: {
+    label: "CONDITIONALLY DEPLOYABLE",
+    accent: "#BA7517",
+    outer: "bg-[#FAEEDA] border-[#BA7517]/40",
+    solid: "bg-[#BA7517] text-white",
+    softTint: "bg-[#FAEEDA] text-[#BA7517]",
+  },
+  TRIAL_ONLY: {
+    label: "TRIAL ONLY",
+    accent: "#0F6E56",
+    outer: "bg-[#E3F0EB] border-[#0F6E56]/40",
+    solid: "bg-[#0F6E56] text-white",
+    softTint: "bg-[#E3F0EB] text-[#0F6E56]",
+  },
+  NOT_DEPLOYABLE_IN_CONTEXT: {
+    label: "NOT DEPLOYABLE IN CONTEXT",
+    accent: "#993C1D",
+    outer: "bg-[#FAECE7] border-[#993C1D]/40",
+    solid: "bg-[#993C1D] text-white",
+    softTint: "bg-[#FAECE7] text-[#993C1D]",
+  },
+};
+
+/** What a condition blocks, in the words the card uses. */
+export const BLOCKING_SCOPE_LABEL: Record<BlockingScope, string> = {
+  TRIAL: "A trial",
+  ROUTINE_DEPLOYMENT: "Routine deployment",
+};
+
+export const BLOCKING_SCOPE_STYLE: Record<BlockingScope, string> = {
+  TRIAL: "border border-[#993C1D] bg-[#993C1D] text-white",
+  ROUTINE_DEPLOYMENT: "border border-[#BA7517] bg-transparent text-[#BA7517]",
+};
+
+/** 15 September 2026. The card never shows an ISO string to a reader. */
+export function formatCardDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/**
+ * 22 Sep 2026 — the compact form the changelog uses.
+ *
+ * Built from parts rather than `toLocaleDateString`, which renders September as
+ * "Sept" under en-GB and so produces a four-letter month in a column of
+ * three-letter ones.
+ */
+const SHORT_MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+export function formatCardDateShort(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${d.getUTCDate()} ${SHORT_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}

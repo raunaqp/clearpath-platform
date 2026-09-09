@@ -3,52 +3,46 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import type { ToolReadinessCard } from "@/lib/schemas/readiness-card";
-import type { Tool } from "@/lib/schemas/tool";
-import type { Document } from "@/lib/schemas/document";
-import {
-  getCardBySlug,
-  getTool,
-  getDocumentsByIds,
-} from "@/lib/mock/api";
-import { ReadinessCard } from "@/components/card/ReadinessCard";
+import { getCardV2 } from "@/lib/mock/api";
+import type { CardV2View } from "@/lib/mock/cards-v2";
+import { ReadinessCardV2 } from "@/components/card/v2/ReadinessCardV2";
 import { ApplicableHospitals } from "@/components/card/ApplicableHospitals";
 import { RegistryListing } from "@/components/card/RegistryListing";
-import { AddSupportingDocument } from "@/components/card/AddSupportingDocument";
+import { getCardBySlug } from "@/lib/mock/api";
+import type { ToolReadinessCard } from "@/lib/schemas/readiness-card";
 
+/**
+ * S6 — the Readiness Card.
+ *
+ * Renders the v2 card. The two downstream vendor actions still take a v1 card
+ * (they drive hospital-side flows that read the legacy shape), so the legacy
+ * card is fetched alongside purely to feed them. That is the adapter boundary
+ * made visible: new surface reads v2, old surface reads v1, and neither pokes
+ * at the other's shape.
+ */
 export default function CardPage() {
   const params = useParams<{ id: string }>();
-  const cardId = params.id;
+  const slug = params.id;
   const router = useRouter();
 
-  const [card, setCard] = useState<ToolReadinessCard | null>(null);
-  const [tool, setTool] = useState<Tool | null>(null);
-  const [docs, setDocs] = useState<Document[]>([]);
+  const [view, setView] = useState<CardV2View | null>(null);
+  const [legacyCard, setLegacyCard] = useState<ToolReadinessCard | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let live = true;
     (async () => {
-      const c = await getCardBySlug(cardId);
-      if (!c) {
-        if (live) setLoading(false);
-        return;
-      }
-      const [t, d] = await Promise.all([
-        getTool(c.toolId),
-        getDocumentsByIds(c.docIds),
-      ]);
+      const [v, legacy] = await Promise.all([getCardV2(slug), getCardBySlug(slug)]);
       if (!live) return;
-      if (t && cardId !== t.slug) router.replace(`/submit/${t.slug}/card`);
-      setCard(c);
-      setTool(t ?? null);
-      setDocs(d);
+      if (v && slug !== v.tool.slug) router.replace(`/submit/${v.tool.slug}/card`);
+      setView(v ?? null);
+      setLegacyCard(legacy ?? null);
       setLoading(false);
     })();
     return () => {
       live = false;
     };
-  }, [cardId]);
+  }, [slug, router]);
 
   if (loading) {
     return (
@@ -58,7 +52,7 @@ export default function CardPage() {
     );
   }
 
-  if (!card || !tool) {
+  if (!view) {
     return (
       <div className="mx-auto max-w-lg py-16 text-center">
         <p className="font-serif text-xl text-ink">Card not found</p>
@@ -74,13 +68,11 @@ export default function CardPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <ReadinessCard card={card} tool={tool} docs={docs} />
-
-      {/* Vendor · add one more supporting document (appears in evidence above) */}
-      <AddSupportingDocument
-        tool={tool}
-        card={card}
-        onAdded={(doc) => setDocs((d) => [...d, doc])}
+      <ReadinessCardV2
+        card={view.card}
+        tool={view.tool}
+        evidence={view.evidence}
+        contextIsReal={view.contextIsReal}
       />
 
       {/* Two distinct vendor actions — do either or both */}
@@ -89,8 +81,12 @@ export default function CardPage() {
           Next steps — two options
         </p>
       </div>
-      <ApplicableHospitals tool={tool} card={card} />
-      <RegistryListing tool={tool} card={card} />
+      {legacyCard && (
+        <>
+          <ApplicableHospitals tool={view.tool} card={legacyCard} />
+          <RegistryListing tool={view.tool} card={legacyCard} />
+        </>
+      )}
     </div>
   );
 }

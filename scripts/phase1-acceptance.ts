@@ -152,7 +152,6 @@ const neoCard = buildReadinessCard({
   modelVersion: "neoscan-hb-2.4.1",
   scored: neoSet,
   evidence: neoEvidence,
-  changeSummary: "Card issued for antenatal anaemia screening, district hospital, ANM-operated.",
 });
 
 eq("verdict is CONDITIONALLY_DEPLOYABLE", neoCard.verdict, "CONDITIONALLY_DEPLOYABLE");
@@ -179,7 +178,7 @@ ok(
 );
 const expiry = computeExpiresAt(ASSESSMENT_DATE, neoEvidence);
 eq("expiry is set by the regulatory licence, not the 12-month default", expiry.source, "regulatory_licence");
-ok("the card records which input set the expiry", neoCard.changeLog.some((c) => /regulatory licence/i.test(c.summary)));
+ok("the card records which input set the expiry", /regulatory licence/i.test(neoCard.expiryBasis));
 
 // ── the dimension means ──────────────────────────────────────────────────
 const EXPECTED_MEANS = { D1: 1.6, D2: 1.2, D3: 1.4, D4: 1.1 } as const;

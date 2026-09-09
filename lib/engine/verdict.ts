@@ -280,6 +280,41 @@ function clusterName(code: string): string {
   );
 }
 
+/**
+ * The one-line summary that sits beside the verdict.
+ *
+ * "2 conditions. One blocks a trial. One blocks routine deployment." — which is
+ * a sentence a reader can act on. The phrasing it replaces, "0 required fixes
+ * and 2 to firm up", counts paperwork rather than saying whether anyone can
+ * start next month.
+ */
+export function describeConditions(conditions: CardCondition[]): string {
+  if (conditions.length === 0) {
+    return softenCertainty("No open conditions.");
+  }
+
+  const trial = conditions.filter((c) => c.blocks === "TRIAL").length;
+  const routine = conditions.length - trial;
+  const n = (count: number) => COUNT_WORD[count] ?? String(count);
+
+  const parts: string[] = [];
+  if (trial > 0) parts.push(`${n(trial)} ${trial === 1 ? "blocks" : "block"} a trial.`);
+  if (routine > 0) {
+    parts.push(`${n(routine)} ${routine === 1 ? "blocks" : "block"} routine deployment.`);
+  }
+
+  const head = `${conditions.length} ${conditions.length === 1 ? "condition" : "conditions"}.`;
+  return softenCertainty(`${head} ${parts.join(" ")}`);
+}
+
+const COUNT_WORD: Record<number, string> = {
+  1: "One",
+  2: "Two",
+  3: "Three",
+  4: "Four",
+  5: "Five",
+};
+
 // ─────────────────────────────────────────────────────────────────────────
 // Scope
 // ─────────────────────────────────────────────────────────────────────────

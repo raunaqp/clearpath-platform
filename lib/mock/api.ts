@@ -22,6 +22,7 @@ import type { RegistryToolView } from "@/lib/registry";
 import type { CtriDraft } from "./fixtures/ctri-drafts";
 
 import * as store from "./store";
+import * as cardsV2 from "./cards-v2";
 import { getCtriDraft as ctriDraft } from "./fixtures/ctri-drafts";
 import { AI_SUGGESTIONS, fallbackSuggestion } from "./fixtures/ai-suggestions";
 import { getBodhScore as bodhScore, type BodhScore } from "./fixtures/bodh-scores";
@@ -36,6 +37,19 @@ function latency<T>(value: T): Promise<T> {
   const snapshot = value === undefined ? value : structuredClone(value);
   const ms = 200 + Math.floor(Math.random() * 300);
   return new Promise((resolve) => setTimeout(() => resolve(snapshot), ms));
+}
+
+/**
+ * Same simulated delay, WITHOUT the structuredClone.
+ *
+ * The v2 card view is rebuilt from the engine on every read, so it is already a
+ * fresh object — there is no live store reference for a caller to hold. It also
+ * carries values structuredClone would mangle, so cloning here would buy
+ * nothing and cost correctness.
+ */
+function latencyV2<T>(value: T): Promise<T> {
+  const ms = 200 + Math.floor(Math.random() * 300);
+  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
 }
 
 // ── reads ────────────────────────────────────────────────────────────────────
@@ -226,3 +240,14 @@ export const resetDemoData = (): Promise<void> => {
   store.resetDemoData();
   return latency(undefined);
 };
+
+// ── v2 Readiness Card (S6 / S7) ──────────────────────────────────────────────
+// Separate surface from the v1 card reads above. Hospital-side screens keep
+// reading the v1 shape through the legacy adapter; nothing here disturbs them.
+
+export const getCardV2 = (slug: string): Promise<cardsV2.CardV2View | undefined> =>
+  latencyV2(cardsV2.getCardV2(slug));
+
+export const remediateCondition = (
+  input: cardsV2.RemediateInput
+): Promise<cardsV2.CardV2View | undefined> => latencyV2(cardsV2.remediate(input));
