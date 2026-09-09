@@ -47,6 +47,7 @@ import {
 } from "./fixtures/cerviai-v2";
 
 const STORAGE_KEY = "clearpath-remediations-v1";
+const SUBMISSIONS_KEY = "clearpath-submissions-v2";
 const DEFAULT_ISSUED_AT = "2026-09-15T00:00:00.000Z";
 
 /** A remediation the vendor has applied, in the order applied. */
@@ -87,6 +88,74 @@ function persist() {
 export function resetRemediations() {
   applied = [];
   persist();
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Submissions created by the wizard
+// ═════════════════════════════════════════════════════════════════════════
+
+/**
+ * A submission the vendor actually built, as opposed to one that shipped as a
+ * fixture. This is what makes a fresh tool produce a REAL card rather than
+ * falling back to a derived placeholder.
+ *
+ * WHAT IS AND IS NOT KEPT. The declared context, the 17-gate declaration and
+ * each document's PROVENANCE are submission data and are kept, so a refresh
+ * does not throw away work the vendor typed. The uploaded FILE CONTENT is never
+ * kept — it lives in browser memory for the session and nothing writes it
+ * anywhere. A document therefore survives a refresh as what the vendor said
+ * about it, which is the part the assessment uses, while the bytes do not.
+ */
+export type RegisteredSubmission = {
+  slug: string;
+  context: SubmissionContext;
+  declaration: SelfDeclaration;
+  evidence: Evidence[];
+  toolVersion: string;
+  modelVersion: string;
+  issuedAt: string;
+};
+
+let registered: RegisteredSubmission[] | null = null;
+
+function loadSubmissions(): RegisteredSubmission[] {
+  if (registered) return registered;
+  registered = [];
+  if (typeof window !== "undefined") {
+    try {
+      const raw = window.localStorage.getItem(SUBMISSIONS_KEY);
+      if (raw) registered = JSON.parse(raw) as RegisteredSubmission[];
+    } catch {
+      registered = [];
+    }
+  }
+  return registered;
+}
+
+function persistSubmissions() {
+  if (typeof window === "undefined" || !registered) return;
+  try {
+    window.localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(registered));
+  } catch {
+    // A demo nicety. Never break the flow over storage.
+  }
+}
+
+export function registerSubmission(sub: RegisteredSubmission) {
+  const list = loadSubmissions();
+  const i = list.findIndex((s) => s.slug === sub.slug);
+  if (i >= 0) list[i] = sub;
+  else list.push(sub);
+  persistSubmissions();
+}
+
+export function getRegisteredSubmission(slug: string): RegisteredSubmission | undefined {
+  return loadSubmissions().find((s) => s.slug === slug);
+}
+
+export function resetSubmissions() {
+  registered = [];
+  persistSubmissions();
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -231,6 +300,22 @@ function setupFor(slug: string): ToolSetup | undefined {
    */
   const seeded = SEEDED[tool.slug];
   if (seeded) return { tool, ...seeded, contextIsReal: true };
+
+  // A submission the vendor built in the wizard. Its context was declared, not
+  // derived, so the card reads it as a real frozen context.
+  const own = getRegisteredSubmission(tool.slug);
+  if (own) {
+    return {
+      tool,
+      context: own.context,
+      declaration: own.declaration,
+      evidence: own.evidence,
+      issuedAt: own.issuedAt,
+      toolVersion: own.toolVersion,
+      modelVersion: own.modelVersion,
+      contextIsReal: true,
+    };
+  }
 
   const context = derivedContext(tool);
   return {

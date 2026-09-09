@@ -144,15 +144,33 @@ export function runAssessment(input: AssessmentRunInput): AssessmentRun {
     }
   }
 
-  // ── unsupported gates: an open condition with nothing to read ────────────
-  const unsupportedGates: string[] = [];
+  // ── unsupported gates: nothing on file to read ───────────────────────────
+  // TWO SOURCES, and the second one closes the loophole that matters.
+  //
+  //   (a) an open condition with no document bound. The vendor has said a gate
+  //       is only partly in place and offered nothing to read about it.
+  //
+  //   (b) a TRIAL-BLOCKING gate declared at any level with no document bound.
+  //       Without this, a submission that answered every question "yes" would
+  //       have no conditions at all, therefore no unsupported gates, and would
+  //       issue a clean card off a single attachment. Declaring safety,
+  //       legality, consent or data handling is not evidence of them, and a
+  //       flow that let assertion alone produce a card would be exactly the
+  //       self-certification this step exists to interrupt.
+  const unsupported = new Set<string>();
+
   for (const c of input.conditions) {
     const item = getItem(c.itemId);
     if (!item?.isGate) continue;
     if ((bound.get(c.itemId) ?? []).length === 0) {
-      unsupportedGates.push(item.legacyGateId ?? c.itemId);
+      unsupported.add(item.legacyGateId ?? c.itemId);
     }
   }
+  for (const d of discrepancies) {
+    if (d.kind === "UNEVIDENCED") unsupported.add(d.gateId);
+  }
+
+  const unsupportedGates = [...unsupported];
 
   // ── coverage: over the gates that DECIDE the verdict ─────────────────────
   // The open conditions plus everything that could block a trial. Coverage of

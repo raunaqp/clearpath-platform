@@ -251,3 +251,12 @@ export const getCardV2 = (slug: string): Promise<cardsV2.CardV2View | undefined>
 export const remediateCondition = (
   input: cardsV2.RemediateInput
 ): Promise<cardsV2.CardV2View | undefined> => latencyV2(cardsV2.remediate(input));
+
+export const registerSubmissionV2 = (
+  sub: cardsV2.RegisteredSubmission
+): Promise<void> => latencyV2(cardsV2.registerSubmission(sub));
+
+export const getRegisteredSubmissionV2 = (
+  slug: string
+): Promise<cardsV2.RegisteredSubmission | undefined> =>
+  latencyV2(cardsV2.getRegisteredSubmission(slug));

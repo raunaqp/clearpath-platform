@@ -11,15 +11,21 @@ import {
   TOOL_GATES,
   type ToolGateId,
 } from "@/lib/engine/gates";
-import { runToolAssessment } from "@/lib/engine/readiness-tool";
 import { DOCUMENTS } from "@/lib/mock/fixtures/documents";
-import { DOC_KIND_LABEL, DOC_STATUS_STYLE, VERDICT_STYLE } from "@/lib/ui";
-import { createAssessment } from "@/lib/mock/api";
+import { createAssessment, registerSubmissionV2 } from "@/lib/mock/api";
+import type { SubmissionContext } from "@/lib/schemas/context";
+import { canBeAssessed } from "@/lib/schemas/context";
+import { ContextPanel } from "@/components/submit/ContextPanel";
+import { EvidenceManager, type DraftDoc } from "@/components/submit/EvidenceManager";
+import { IntakeChecklistView } from "@/components/submit/IntakeChecklistView";
+import { declarationsExceedingEvidence } from "@/lib/engine/assessment-run";
+import type { Level, SelfDeclaration } from "@/lib/schemas/score";
+import { CERVIAI_CONTEXT, CERVIAI_EVIDENCE } from "@/lib/mock/fixtures/cerviai-v2";
+import { RETINASCAN_CONTEXT, RETINASCAN_EVIDENCE } from "@/lib/mock/fixtures/retinascan-v2";
 import { WIZARD_EXAMPLES, type WizardExample } from "@/lib/wizard/examples";
 import { getBodhScore, bodhToGateAnswers, type BodhScore } from "@/lib/mock/fixtures/bodh-scores";
 import { Segmented } from "@/components/wizard/Segmented";
 import { DocViewer } from "@/components/DocViewer";
-import { Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Docs that belong to a given seed tool (the wizard's candidate evidence). */
@@ -74,8 +80,46 @@ const GATE_OPTIONS = [
   { value: "fail" as GateStatus, label: "No", tone: "fail" as const },
 ];
 
-// Evidence-first order (FIX 1): describe → attach reports → answer → generate.
-const STEP_LABELS = ["Company & tool", "Reports", "Questions", "Generate"];
+/**
+ * The six stages a submission passes through.
+ *
+ * The wizard holds three of them inline — Context, Evidence, Declaration. The
+ * Checklist renders as a panel at the top of the Evidence stage (and as its own
+ * route once a submission exists), and Assessment and Card are their own
+ * routes. So the stepper describes the whole journey while `step` only indexes
+ * the inline part; STEP_TO_STAGE maps between them.
+ */
+const STAGE_LABELS = ["Context", "Checklist", "Evidence", "Declaration", "Assessment", "Card"];
+const STEP_TO_STAGE: Record<number, number> = { 1: 1, 2: 3, 3: 4, 4: 5 };
+
+/** A neutral starting context for a submission that is not a loaded example. */
+const EMPTY_CONTEXT: SubmissionContext = {
+  entity: { name: "", verified: false, conflictsDeclared: [] },
+  buildStatus: "DEPLOYABLE_BUILD",
+  exactClaim: "",
+  outOfScope: [],
+  path: "PUBLIC_PROCUREMENT",
+  careLevel: "CHC",
+  operatorCadre: "STAFF_NURSE",
+  programmeLine: "",
+  geography: "",
+  deploymentModes: ["OPD_QUEUE"],
+  population: { ageRange: "", sex: "ALL", geography: "" },
+  autonomyLevel: "RECOMMENDS",
+};
+
+/** GateStatus (the declaration UI) → the 0-2 ladder the engines use. */
+const STATUS_TO_LEVEL: Record<GateStatus, Level> = { pass: 2, partial: 1, fail: 0 };
+
+/** Contexts and evidence for the loadable examples. */
+const EXAMPLE_CONTEXT: Record<string, SubmissionContext> = {
+  "tool-cerviai": CERVIAI_CONTEXT,
+  "tool-retinascan": RETINASCAN_CONTEXT,
+};
+const EXAMPLE_EVIDENCE: Record<string, DraftDoc[]> = {
+  "tool-cerviai": CERVIAI_EVIDENCE,
+  "tool-retinascan": RETINASCAN_EVIDENCE,
+};
 
 export default function SubmitWizard() {
   const router = useRouter();
@@ -84,6 +128,8 @@ export default function SubmitWizard() {
   const [answers, setAnswers] = useState<Partial<Record<ToolGateId, GateStatus>>>({});
   const [candidateDocs, setCandidateDocs] = useState<Document[]>([]);
   const [attached, setAttached] = useState<string[]>([]);
+  const [context, setContext] = useState<SubmissionContext>(EMPTY_CONTEXT);
+  const [docs, setDocs] = useState<DraftDoc[]>([]);
   const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
   const [bodh, setBodh] = useState<BodhScore>(() => getBodhScore("default"));
   const [error, setError] = useState<string | null>(null);
@@ -95,8 +141,8 @@ export default function SubmitWizard() {
   /**
    * Load an example → prefill the description and STARTING answers, then drop
    * the user into the editable wizard. It does NOT auto-generate: the user can
-   * change any answer and the verdict recomputes live (see the preview band in
-   * step 2 and the final engine run in `generate`).
+   * change any answer, and the declaration-completeness band on the
+   * declaration step recomputes live against whatever is attached.
    */
   function loadExample(ex: WizardExample) {
     const { vendor, tool, gateAnswers } = ex.input;
@@ -113,9 +159,14 @@ export default function SubmitWizard() {
     });
     setAnswers({ ...gateAnswers });
     setBodh(getBodhScore(ex.key));
-    const docs = docsForTool(ex.key);
-    setCandidateDocs(docs);
-    setAttached(docs.filter((d) => d.status !== "missing").map((d) => d.id));
+    const seedDocs = docsForTool(ex.key);
+    setCandidateDocs(seedDocs);
+    setAttached(seedDocs.filter((d) => d.status !== "missing").map((d) => d.id));
+    // The v2 context and fully-provenanced evidence for this example. A tool
+    // without a seeded v2 setup starts from the neutral context and an empty
+    // evidence list, which is exactly what a real submission does.
+    setContext(EXAMPLE_CONTEXT[ex.key] ?? { ...EMPTY_CONTEXT, entity: { name: vendor.name, verified: false, conflictsDeclared: [] }, exactClaim: tool.intendedUse });
+    setDocs(EXAMPLE_EVIDENCE[ex.key] ?? []);
     setError(null);
     setStep(1);
   }
@@ -125,6 +176,16 @@ export default function SubmitWizard() {
   function docIdsForCard(): string[] {
     const missing = candidateDocs.filter((d) => d.status === "missing").map((d) => d.id);
     return [...attached, ...missing];
+  }
+
+  /** The 17 answers as a v2 self-declaration. */
+  function declaration(submissionId: string): SelfDeclaration {
+    const gateAnswers: SelfDeclaration["gateAnswers"] = {};
+    for (const [gid, status] of Object.entries(answers)) {
+      if (!status) continue;
+      gateAnswers[gid as keyof SelfDeclaration["gateAnswers"]] = STATUS_TO_LEVEL[status];
+    }
+    return { submissionId, gateAnswers, clarificationAnswers: [] };
   }
 
   async function generate() {
@@ -148,30 +209,55 @@ export default function SubmitWizard() {
         },
         gateAnswers: answers,
       });
-      router.push(`/submit/${created.slug}/card`);
+
+      /**
+       * Register the v2 submission so the card reads a DECLARED context and the
+       * documents this vendor actually attached — rather than falling back to a
+       * derived placeholder, which is what made a fresh submission a dead end.
+       *
+       * The File objects are dropped here on purpose. Their provenance travels;
+       * their bytes do not leave the tab.
+       */
+      await registerSubmissionV2({
+        slug: created.slug,
+        context: {
+          ...context,
+          entity: { ...context.entity, name: context.entity.name || form.company },
+          exactClaim: context.exactClaim || form.intendedUse,
+        },
+        declaration: declaration(`sub-${created.slug}`),
+        evidence: docs.map(({ file: _file, objectUrl: _url, ...e }) => ({
+          ...e,
+          submissionId: `sub-${created.slug}`,
+        })),
+        toolVersion: form.toolName,
+        modelVersion: "not stated",
+        issuedAt: new Date().toISOString(),
+      });
+
+      void card;
+      router.push(`/submit/${created.slug}/assess`);
     } catch {
       setError("We hit a hiccup generating your card. Try again.");
       setStep(3);
     }
   }
 
-  // Live verdict — recomputed by the real engine from the current answers.
-  const preview = useMemo(
-    () =>
-      runToolAssessment({
-        id: "preview",
-        toolId: "preview",
-        toolName: form.toolName || "This tool",
-        careLevel: form.careLevel,
-        gateAnswers: answers,
-        docIds: [],
-        createdAt: "",
-      }),
-    [answers, form.toolName, form.careLevel]
-  );
   const answeredCount = useMemo(
     () => Object.values(answers).filter(Boolean).length,
     [answers]
+  );
+
+  /**
+   * Gates where the vendor's own answer sits above what the attached documents
+   * can carry. Derived on every change from the current answers and the current
+   * attachments — never a stored or hardcoded count — so it moves as evidence
+   * arrives. It is a prompt to attach something, not a finding about the tool.
+   */
+  const exceeding = useMemo(
+    () => declarationsExceedingEvidence(declaration("draft"), docs),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [answers, docs]
   );
 
   // ── Step 0 · Start ─────────────────────────────────────────────────────────
@@ -223,8 +309,9 @@ export default function SubmitWizard() {
 
       {/* ── Step 1 · Company & tool ─────────────────────────────────────────── */}
       {step === 1 && (
-        <StepShell title="Company & tool" onBack={() => setStep(0)}
-          onNext={() => setStep(2)} nextDisabled={!form.toolName || !form.company}>
+        <StepShell title="Context" onBack={() => setStep(0)}
+          onNext={() => setStep(2)} nextDisabled={!form.toolName || !form.company || !canBeAssessed(context.buildStatus)}
+          subtitle="Who you are, what the tool is, and exactly where it is being deployed. The card that comes out is valid only inside the context you declare here.">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Tool name">
               <TextInput value={form.toolName} onChange={(v) => set("toolName", v)} placeholder="e.g. CerviAI" />
@@ -276,24 +363,51 @@ export default function SubmitWizard() {
               ))}
             </select>
           </Field>
+
+          <ContextPanel context={context} onChange={setContext} locked={false} />
         </StepShell>
       )}
 
       {/* ── Step 3 · Basic questions (17 gates) — answer against the evidence ── */}
       {step === 3 && (
-        <StepShell title="Basic questions" onBack={() => setStep(2)}
-          onNext={() => { setStep(4); void generate(); }} nextLabel="Generate card"
-          subtitle="Answer against the evidence you attached. Yes / Partial / No — these map directly to the 17 gates. Skip any you can’t answer; they’ll show as “not answered.”">
+        <StepShell title="Innovator declaration" onBack={() => setStep(2)}
+          onNext={() => { setStep(4); void generate(); }} nextLabel="Submit for assessment"
+          subtitle="Your own assessment against 17 gate questions. ClearPath assesses these independently against your evidence in the next step.">
           {error && <p className="mb-3 text-sm text-coral-brand">{error}</p>}
-          {/* Live verdict — updates as answers change */}
-          <div className={cn("flex flex-wrap items-center justify-between gap-2 rounded-card px-4 py-3", VERDICT_STYLE[preview.verdict].tint)}>
-            <div>
-              <p className="text-xs uppercase tracking-wide opacity-80">Live verdict</p>
-              <p className="font-serif text-lg">{VERDICT_STYLE[preview.verdict].label}</p>
-            </div>
-            <p className="text-xs opacity-90">
-              {answeredCount}/17 answered · D1 {preview.dimensionScores.D1}% · D2 {preview.dimensionScores.D2}% · D3 {preview.dimensionScores.D3}% · D4 {preview.dimensionScores.D4}%
+          {/*
+            DECLARATION COMPLETENESS — not a verdict, and the word does not
+            appear on this screen.
+
+            The band this replaced announced a verdict while the vendor was
+            still choosing answers, which is precisely what made the flow read
+            as self-certification: the tool appeared to grade itself from its
+            own answers, before anyone had looked at a document.
+
+            It stays LIVE, because live was never the problem. Watching the
+            "exceeds" count move as you attach evidence is the most useful
+            behaviour in the wizard. The problem was that it called itself a
+            verdict, and that it showed per-dimension percentages — which belong
+            on the card, on the 0-2 ladder, after an assessment has happened.
+          */}
+          <div className="rounded-card border border-teal-deep/30 bg-teal-light/30 px-4 py-3">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-teal-deep">
+              Declaration completeness
             </p>
+            <p className="mt-1 text-sm leading-relaxed text-ink">
+              {answeredCount}/17 answered · {docs.length} {docs.length === 1 ? "document" : "documents"}
+              {exceeding.length > 0 && (
+                <>
+                  {" · "}
+                  {exceeding.length} {exceeding.length === 1 ? "declaration" : "declarations"} exceed
+                  what the attached evidence currently shows
+                </>
+              )}
+            </p>
+            {exceeding.length > 0 && (
+              <p className="mt-1 font-mono text-xs text-muted">
+                {exceeding.map((e) => e.gateId).join(", ")}
+              </p>
+            )}
           </div>
 
           {/* BODH validation score — pre-fills clinical (G1), fairness (G17), safety (G2) */}
@@ -338,61 +452,42 @@ export default function SubmitWizard() {
         </StepShell>
       )}
 
-      {/* ── Step 2 · Attach reports (evidence-first, before the questions) ───── */}
+      {/* ── Step 2 · Checklist + evidence ───────────────────────────────────── */}
       {step === 2 && (
-        <StepShell title="Attach reports" onBack={() => setStep(1)} onNext={() => setStep(3)}
-          subtitle="Attach your evidence first — then you’ll answer the gate questions against it. Open any document to review it. Missing documents stay on the card as gaps.">
-          {candidateDocs.length === 0 ? (
-            <p className="rounded-card border border-line bg-bg-card px-4 py-6 text-sm text-muted">
-              No sample documents for a custom tool in this demo. Load an example
-              on the start screen to see the per-tool evidence set.
-            </p>
-          ) : (
-            <ul className="divide-y divide-line-soft rounded-card border border-line bg-bg-card">
-              {candidateDocs.map((doc) => {
-                const on = attached.includes(doc.id);
-                const missing = doc.status === "missing";
-                const st = DOC_STATUS_STYLE[doc.status] ?? DOC_STATUS_STYLE.present;
-                return (
-                  <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className={cn("text-sm", missing ? "text-muted" : "text-ink")}>{doc.name}</p>
-                        <span className={cn("inline-flex items-center gap-1.5 rounded-pill px-2 py-0.5 text-xs", st.tint)}>
-                          <span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />
-                          {st.label}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted">{DOC_KIND_LABEL[doc.kind]}</p>
-                    </div>
-                    {missing ? (
-                      <span className="text-xs text-muted">Not provided</span>
-                    ) : (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <button
-                          onClick={() => setViewingDoc(doc)}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-xs text-ink-2 transition-colors hover:bg-bg-sink"
-                        >
-                          <Eye className="h-3.5 w-3.5" /> View
-                        </button>
-                        <button
-                          onClick={() =>
-                            setAttached((a) => (on ? a.filter((id) => id !== doc.id) : [...a, doc.id]))
-                          }
-                          className={cn(
-                            "rounded-md border px-3 py-1 text-xs transition-colors",
-                            on ? "border-teal-deep bg-teal-light text-teal-deep" : "border-line text-ink-2 hover:bg-bg-sink"
-                          )}
-                        >
-                          {on ? "Attached" : "Attach"}
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+        <StepShell title="Evidence" onBack={() => setStep(1)} onNext={() => setStep(3)}
+          subtitle="The checklist says what a submission of this kind is expected to bring. Attach documents against it, then bind each one to the gates it speaks to.">
+          <div className="space-y-6">
+            <details className="rounded-card border border-line bg-bg-card" open>
+              <summary className="cursor-pointer px-4 py-3 text-sm text-ink">
+                Intake checklist — what this submission is expected to include
+              </summary>
+              <div className="border-t border-line-soft p-4">
+                <IntakeChecklistView
+                  category={(form.category || "screening") as ToolCategory}
+                  context={context}
+                  attached={docs}
+                  compact
+                />
+              </div>
+            </details>
+
+            <EvidenceManager
+              docs={docs}
+              context={context}
+              submissionId="draft"
+              onChange={setDocs}
+            />
+
+            {candidateDocs.length > 0 && (
+              <div className="rounded-card border border-line bg-bg-card px-4 py-3">
+                <p className="text-xs leading-relaxed text-muted">
+                  {candidateDocs.filter((d) => d.status === "missing").length > 0
+                    ? `${candidateDocs.filter((d) => d.status === "missing").length} expected document(s) for this example are recorded as not provided. They stay on the card as gaps.`
+                    : "This example's documents are attached above with their full provenance."}
+                </p>
+              </div>
+            )}
+          </div>
           <DocViewer doc={viewingDoc} onClose={() => setViewingDoc(null)} />
         </StepShell>
       )}
@@ -411,13 +506,22 @@ export default function SubmitWizard() {
 
 // ── small building blocks ─────────────────────────────────────────────────────
 
+/**
+ * The six-stage progress rail.
+ *
+ * `step` indexes the three INLINE wizard steps; the rail shows all six stages
+ * of the journey, including the two that are their own routes. Stage 2
+ * (Checklist) is marked reached when the vendor is on the Evidence stage,
+ * because the checklist renders at the top of that screen.
+ */
 function WizardProgress({ step }: { step: number }) {
+  const stage = STEP_TO_STAGE[step] ?? 1;
   return (
-    <ol className="mb-6 flex items-center gap-2 text-xs">
-      {STEP_LABELS.map((label, i) => {
+    <ol className="mb-6 flex flex-wrap items-center gap-y-2 text-xs">
+      {STAGE_LABELS.map((label, i) => {
         const n = i + 1;
-        const active = step === n;
-        const done = step > n;
+        const active = stage === n;
+        const done = stage > n;
         return (
           <li key={label} className="flex items-center gap-2">
             <span
@@ -429,7 +533,7 @@ function WizardProgress({ step }: { step: number }) {
               {n}
             </span>
             <span className={cn(active ? "text-ink" : "text-muted")}>{label}</span>
-            {i < STEP_LABELS.length - 1 && <span className="mx-1 h-px w-4 bg-line" />}
+            {i < STAGE_LABELS.length - 1 && <span className="mx-1 h-px w-4 bg-line" />}
           </li>
         );
       })}
