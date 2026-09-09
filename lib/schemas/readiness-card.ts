@@ -57,6 +57,23 @@ export const DimensionScoreSchema = z.object({
 export type DimensionScore = z.infer<typeof DimensionScoreSchema>;
 
 /**
+ * What a condition stands in the way of.
+ *
+ *   TRIAL               cannot be worked around by running a trial. Running one
+ *                       is the activity this condition gates — you cannot
+ *                       establish a lawful basis for handling patient data by
+ *                       handling patient data.
+ *   ROUTINE_DEPLOYMENT  often IS resolved by running a supervised trial. Whether
+ *                       the tool helps patients, fits the workflow, or survives
+ *                       a real clinic is what a trial exists to find out.
+ *
+ * The card must say which, because "2 conditions" tells a reader nothing about
+ * whether they can start next month or not at all.
+ */
+export const BlockingScopeEnum = z.enum(["TRIAL", "ROUTINE_DEPLOYMENT"]);
+export type BlockingScope = z.infer<typeof BlockingScopeEnum>;
+
+/**
  * Something to clear before, or while, deploying.
  *   gate_fail — a gate item that did not reach the top of the ladder
  *   firm_up   — a non-gate item sitting at or below "requires support"
@@ -64,11 +81,23 @@ export type DimensionScore = z.infer<typeof DimensionScoreSchema>;
 export const CardConditionSchema = z.object({
   itemId: z.string(),
   kind: z.enum(["gate_fail", "firm_up"]),
+  blocks: BlockingScopeEnum,
   fix: z.string(),
   /** Who can clear it, and how — named so the condition is actionable. */
   clearedBy: z.string(),
 });
 export type CardCondition = z.infer<typeof CardConditionSchema>;
+
+/**
+ * Placement — where the card says the tool may go, and where it explicitly
+ * does not. The excluded list is not decoration: a card that only says where a
+ * tool fits gets read as silence-means-permission everywhere else.
+ */
+export const PlacementSchema = z.object({
+  statement: z.string(),
+  excluded: z.array(z.string()),
+});
+export type Placement = z.infer<typeof PlacementSchema>;
 
 /** Gate roll-up. `unscored` is tracked separately from `fail` throughout. */
 export const GateSummarySchema = z.object({
@@ -88,10 +117,27 @@ export const CardChangeLogEntrySchema = z.object({
 export type CardChangeLogEntry = z.infer<typeof CardChangeLogEntrySchema>;
 
 export const ReadinessCardSchema = z.object({
+  /** CP-YYYY-MMDD-<TOOLSLUG>-NNN. Stable across reissues — it identifies the
+   *  assessment, not the version. See `lib/engine/card-id.ts`. */
   id: z.string(),
+  /** 1, 2, 3 … Displayed as v1.0, v1.1, v1.2 (see `versionLabel`). */
   version: z.number(),
+  /** When THIS version was issued. Moves on every reissue. */
   issuedAt: z.string(),
+  /**
+   * When version 1 was issued. Never moves.
+   *
+   * Not in the Phase 2 brief, but the brief's own rules require it: expiry is
+   * anchored to the original assessment, and the changelog has to be able to
+   * date the v1.0 row after `issuedAt` has moved on. Deriving either from
+   * `expiresAt` would be wrong the moment a regulatory licence sets the expiry
+   * instead of the 12-month default.
+   */
+  firstIssuedAt: z.string(),
+  /** Anchored to `firstIssuedAt`. A reissue carries it forward untouched. */
   expiresAt: z.string(),
+  /** Which input set the expiry — the 12-month default or a licence date. */
+  expiryBasis: z.string(),
   /**
    * FROZEN COPY of the context this card was issued for. The card is valid
    * ONLY inside it. Copied, not referenced, so a later edit to the submission
@@ -103,6 +149,14 @@ export const ReadinessCardSchema = z.object({
   dimensionScores: z.record(DimensionIdEnum, DimensionScoreSchema),
   verdict: CardVerdictEnum,
   conditions: z.array(CardConditionSchema),
+  placement: PlacementSchema,
+  /**
+   * One line stating demo scope versus funded scope. Set once in the engine
+   * (`SCOPE_NOTE`), never per-card in a fixture — a scope caveat that can be
+   * edited per fixture is a scope caveat that will eventually be edited off
+   * the one card that most needed it.
+   */
+  scopeNote: z.string(),
   gateSummary: GateSummarySchema,
   /**
    * Items the assessment could not establish either way. This list is the
@@ -110,9 +164,20 @@ export const ReadinessCardSchema = z.object({
    * cannot be averaged with a finding.
    */
   couldNotEstablish: z.array(z.string()),
+  /**
+   * One entry per REISSUE — the transitions, not the issues. A card at v1.0 has
+   * an empty changelog because nothing has changed yet, so
+   * `changeLog.length === version - 1` holds at every version. The v1.0 row a
+   * reader sees is rendered from `firstIssuedAt`, not stored here.
+   */
   changeLog: z.array(CardChangeLogEntrySchema),
 });
 export type ReadinessCard = z.infer<typeof ReadinessCardSchema>;
+
+/** 1 → "v1.0", 2 → "v1.1". The only place version display is decided. */
+export function versionLabel(version: number): string {
+  return `v1.${version - 1}`;
+}
 
 /**
  * NO `overallScore` ON THE v2 CARD, DELIBERATELY.

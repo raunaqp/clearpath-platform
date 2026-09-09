@@ -37,13 +37,25 @@ import type { AssessmentItem } from "@/lib/schemas/item";
 import type { Evidence } from "@/lib/schemas/evidence";
 import type { SubmissionContext } from "@/lib/schemas/context";
 import type {
+  BlockingScope,
   CardCondition,
   CardVerdict,
   DimensionId,
   DimensionScore,
   GateSummary,
+  Placement,
   ReadinessCard,
 } from "@/lib/schemas/readiness-card";
+import {
+  CADRE_AVAILABILITY,
+  CARE_LEVEL_LABEL,
+  CARE_LEVEL_SHORT,
+  PRIVATE_CARE_LEVELS,
+  PUBLIC_CARE_LEVELS,
+  type ContextCareLevel,
+  type OperatorCadre,
+  type SubmissionPath,
+} from "@/lib/schemas/context";
 import {
   clusterAggregate,
   couldNotEstablish,
@@ -54,7 +66,13 @@ import {
   type FinalLevel,
   type ScoredSet,
 } from "./score";
-import { getItem, gateItems, itemsForPath } from "./item-bank";
+import {
+  FRAMEWORK_CLUSTERS,
+  PRIVATE_D2_CLUSTER,
+  getItem,
+  gateItems,
+  itemsForPath,
+} from "./item-bank";
 import { earliestRegulatoryExpiry } from "./evidence";
 import { softenCertainty } from "./soften-certainty";
 
@@ -121,6 +139,36 @@ export function deriveVerdict(
   return "DEPLOYABLE";
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// What a condition blocks
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Clusters whose conditions block a TRIAL, not merely routine deployment.
+ *
+ * The test is simple: can running a supervised trial ESTABLISH this? If not,
+ * the condition gates the trial itself.
+ *
+ *   D1.C  Clinical Performance & Safety — you do not find out whether a device
+ *         fails safe by pointing it at patients and seeing what happens.
+ *   D1.D  Regulatory Status — the legal basis to use it at all. A trial is a
+ *         use.
+ *   D4.E  Patient Consent & Data Rights — you cannot consent people by
+ *         enrolling them first.
+ *   D4.F  Privacy, Storage & Security — you cannot establish a lawful basis for
+ *         handling patient data by handling patient data.
+ *
+ * Everything else — does it help patients, does it fit the clinic, does the
+ * data move, can anyone see how it is doing — is precisely what a supervised
+ * trial exists to find out, so those conditions block ROUTINE_DEPLOYMENT and a
+ * trial is the route through them.
+ */
+export const TRIAL_BLOCKING_CLUSTERS: readonly string[] = ["D1.C", "D1.D", "D4.E", "D4.F"];
+
+export function blockingScopeFor(item: AssessmentItem): BlockingScope {
+  return TRIAL_BLOCKING_CLUSTERS.includes(item.clusterCode) ? "TRIAL" : "ROUTINE_DEPLOYMENT";
+}
+
 /**
  * Conditions, most severe first: gate failures, then firm-ups. `clearedBy`
  * names who can close it and with what, so a condition is an instruction
@@ -142,6 +190,7 @@ export function buildConditions(
       gateFails.push({
         itemId: item.id,
         kind: "gate_fail",
+        blocks: blockingScopeFor(item),
         fix: softenCertainty(item.fix ?? ""),
         clearedBy: clearedBy(item),
       });
@@ -149,6 +198,7 @@ export function buildConditions(
       firmUps.push({
         itemId: item.id,
         kind: "firm_up",
+        blocks: blockingScopeFor(item),
         fix: softenCertainty(item.fix ?? ""),
         clearedBy: clearedBy(item),
       });
@@ -166,6 +216,201 @@ function clearedBy(item: AssessmentItem): string {
   return softenCertainty(
     `An assessor, on receipt of evidence of type: ${kinds}, bound to ${item.id}.`
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// What the assessment could not establish
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * The honest counterweight to the verdict, in sentences rather than item ids.
+ *
+ * Two kinds of absence, and both belong on the card:
+ *
+ *   1. AUTHORED ITEMS NOBODY ESTABLISHED. Someone wrote the question and no
+ *      evidence answered it either way.
+ *
+ *   2. CLUSTERS WITH NOTHING AUTHORED AT ALL. Today that is patient outcomes,
+ *      infrastructure readiness and interface accessibility — three clusters
+ *      where the framework asks nothing yet, so the assessment found nothing,
+ *      so a reader could easily conclude there was nothing to find. This is the
+ *      most misleading silence on the card and it is the one most worth
+ *      breaking.
+ *
+ * Partially-authored clusters are NOT listed. The scope line already says how
+ * much of the framework the demo runs, and repeating it per cluster would bury
+ * the two or three absences a reader can actually act on.
+ */
+export function buildCouldNotEstablish(
+  resolved: Map<string, FinalLevel>,
+  path: "PUBLIC" | "PRIVATE"
+): string[] {
+  const out: string[] = [];
+
+  for (const id of couldNotEstablish(resolved, path)) {
+    const item = getItem(id);
+    if (!item) continue;
+    const label = item.legacyGateId ? `${item.legacyGateId} · ${id}` : id;
+    out.push(
+      softenCertainty(
+        `${label} — ${item.text} No submitted evidence establishes this either way.`
+      )
+    );
+  }
+
+  const items = itemsForPath(path);
+  const clusters = [...new Set(items.map((i) => i.clusterCode))];
+  for (const code of clusters) {
+    const inCluster = items.filter((i) => i.clusterCode === code);
+    if (inCluster.some((i) => i.status === "active")) continue;
+    const name = clusterName(code);
+    out.push(
+      softenCertainty(
+        `Nothing in ${name} (${code}) was assessed — those ${inCluster.length} items are not yet authored, so this card is silent on them rather than reassuring.`
+      )
+    );
+  }
+
+  return out;
+}
+
+function clusterName(code: string): string {
+  return (
+    [...FRAMEWORK_CLUSTERS, PRIVATE_D2_CLUSTER].find((c) => c.code === code)?.name ?? code
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Scope
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * The scope caveat, set ONCE, here.
+ *
+ * It is not a per-card field a fixture can soften, because the card that would
+ * most benefit from softening it is exactly the card that must not. Every card
+ * carries the same sentence about how much of the framework the demo actually
+ * runs.
+ */
+export const SCOPE_NOTE =
+  "Demo screening uses 17 gates. The full funded assessment contains 112 items " +
+  "across 17 clusters, scored by at least two blind independent assessors in " +
+  "parallel with an AI pass.";
+
+// ─────────────────────────────────────────────────────────────────────────
+// Placement
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Short caveat labels per cluster — what an open condition in that cluster
+ * means for placement, in a reader's words. Only clusters that can currently
+ * carry a condition need one; a stub cluster cannot produce a condition.
+ */
+const PLACEMENT_CAVEAT: Record<string, string> = {
+  "D1.A": "outcome evidence",
+  "D1.B": "local validation",
+  "D1.C": "documented safe-fail behaviour",
+  "D1.D": "regulatory clearance for this use",
+  "D2.A": "programme fit",
+  "D2.B": "site infrastructure",
+  "D2.C": "procurement route",
+  "D2.P": "the investment case",
+  "D3.A": "operator training",
+  "D3.B": "workload fit",
+  "D3.C": "clinical follow-through",
+  "D3.D": "sustained adoption",
+  "D4.A": "site infrastructure",
+  "D4.B": "interface accessibility",
+  "D4.C": "data portability",
+  "D4.D": "performance monitoring",
+  "D4.E": "a consent basis",
+  "D4.F": "DPDP controls",
+};
+
+function joinPlain(parts: string[]): string {
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+/**
+ * Settings this assessment explicitly does NOT cover.
+ *
+ * A card that only says where a tool fits gets read as silence-means-permission
+ * everywhere else, so the exclusions are stated rather than implied. The rule
+ * is about the OPERATOR: a setting is excluded when it does not typically staff
+ * the cadre the tool was assessed with. A tool does not become unsafe because a
+ * building is smaller — it becomes unsafe because the person holding it was
+ * never assessed holding it.
+ *
+ * Settings on the other procurement path are not listed here; the header's
+ * "a change of context requires a new assessment" already covers them, and
+ * repeating it per setting would bury the one exclusion that matters.
+ */
+export function excludedSettings(
+  careLevel: ContextCareLevel,
+  cadre: OperatorCadre,
+  path: SubmissionPath
+): string[] {
+  const ladder = path === "PRIVATE_INVESTMENT" ? PRIVATE_CARE_LEVELS : PUBLIC_CARE_LEVELS;
+  return ladder
+    .filter((level) => level !== careLevel)
+    .filter((level) => !CADRE_AVAILABILITY[level].includes(cadre))
+    .map((level) => {
+      const label = CARE_LEVEL_LABEL[level];
+      return `${label.charAt(0).toUpperCase()}${label.slice(1)} placement is outside this assessment.`;
+    });
+}
+
+/**
+ * Placement, derived rather than asserted. Any open condition at all puts the
+ * tool in supervised-trial territory — a condition is by definition something
+ * not yet established, and routine deployment is what you do with things that
+ * are.
+ */
+export function derivePlacement(
+  context: SubmissionContext,
+  verdict: CardVerdict,
+  conditions: CardCondition[]
+): Placement {
+  const level = CARE_LEVEL_SHORT[context.careLevel];
+  const excluded = excludedSettings(context.careLevel, context.operatorCadre, context.path);
+
+  if (verdict === "NOT_DEPLOYABLE_IN_CONTEXT") {
+    return {
+      statement: softenCertainty(
+        `Not suitable for placement at ${level} level in this context until the blocking conditions are cleared.`
+      ),
+      excluded,
+    };
+  }
+
+  if (conditions.length === 0) {
+    return {
+      statement: softenCertainty(
+        `Potentially suitable for routine deployment at ${level} level, within the context stated above.`
+      ),
+      excluded,
+    };
+  }
+
+  // De-duplicated, in cluster order, so two conditions in one cluster read as
+  // one caveat rather than the same words twice.
+  const caveats = [
+    ...new Set(
+      conditions
+        .map((c) => getItem(c.itemId)?.clusterCode)
+        .filter((code): code is string => !!code)
+        .map((code) => PLACEMENT_CAVEAT[code] ?? "the open conditions")
+    ),
+  ];
+
+  return {
+    statement: softenCertainty(
+      `Potentially suitable for a supervised trial at ${level} level, subject to ${joinPlain(caveats)}.`
+    ),
+    excluded,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -226,10 +471,11 @@ export type CardInput = {
   modelVersion: string;
   scored: ScoredSet;
   evidence: Evidence[];
-  /** Carried forward on a re-issue; a new card starts empty. */
+  /** Carried forward on a reissue; a new card starts empty. */
   priorChangeLog?: ReadinessCard["changeLog"];
   version?: number;
-  changeSummary?: string;
+  /** Set on a reissue so expiry stays anchored to the original assessment. */
+  firstIssuedAt?: string;
 };
 
 export function buildReadinessCard(input: CardInput): ReadinessCard {
@@ -246,34 +492,39 @@ export function buildReadinessCard(input: CardInput): ReadinessCard {
     };
   }
 
-  const expiry = computeExpiresAt(input.issuedAt, input.evidence);
-  const version = input.version ?? 1;
+  // Expiry is anchored to the FIRST issue, not this one. A card that renewed
+  // its own 12 months every time a vendor cleared a condition would never
+  // expire, which is the opposite of what an expiry is for.
+  const firstIssuedAt = input.firstIssuedAt ?? input.issuedAt;
+  const expiry = computeExpiresAt(firstIssuedAt, input.evidence);
 
-  const changeLog = [
-    ...(input.priorChangeLog ?? []),
-    {
-      version,
-      at: input.issuedAt,
-      summary: softenCertainty(input.changeSummary ?? "Card issued."),
-    },
-    // The expiry rule records which input set the date, per the spec.
-    { version, at: input.issuedAt, summary: expiry.note },
-  ];
+  const verdict = deriveVerdict(resolved, path);
+  const conditions = buildConditions(resolved, path);
 
   return {
     id: input.id,
-    version,
+    version: input.version ?? 1,
     issuedAt: input.issuedAt,
+    firstIssuedAt,
     expiresAt: expiry.expiresAt,
+    expiryBasis: expiry.note,
     // Frozen copy — a later edit to the submission cannot re-scope an issued card.
-    context: { ...input.context, population: { ...input.context.population } },
+    context: {
+      ...input.context,
+      population: { ...input.context.population },
+      deploymentModes: [...input.context.deploymentModes],
+    },
     toolVersion: input.toolVersion,
     modelVersion: input.modelVersion,
     dimensionScores,
-    verdict: deriveVerdict(resolved, path),
-    conditions: buildConditions(resolved, path),
+    verdict,
+    conditions,
+    placement: derivePlacement(input.context, verdict, conditions),
+    scopeNote: SCOPE_NOTE,
     gateSummary: buildGateSummary(resolved, path),
-    couldNotEstablish: couldNotEstablish(resolved, path),
-    changeLog,
+    couldNotEstablish: buildCouldNotEstablish(resolved, path),
+    // Transitions only. A v1.0 card has changed nothing yet, so its changelog
+    // is empty and `changeLog.length === version - 1` holds at every version.
+    changeLog: input.priorChangeLog ?? [],
   };
 }

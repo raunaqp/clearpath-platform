@@ -40,7 +40,7 @@ export const NEOSCAN_CONTEXT: SubmissionContext = {
   operatorCadre: "ANM",
   programmeLine: "Anaemia Mukt Bharat — antenatal screening",
   geography: "Punjab",
-  deploymentMode: "CAMP",
+  deploymentModes: ["CAMP", "OPD_QUEUE"],
   population: {
     ageRange: "15-49",
     sex: "FEMALE",
@@ -58,7 +58,7 @@ const PHC_CONTEXT: SubmissionContext = {
   operatorCadre: "STAFF_NURSE",
   programmeLine: "General screening",
   geography: "Punjab",
-  deploymentMode: "OPD_QUEUE",
+  deploymentModes: ["OPD_QUEUE"],
   population: {
     ageRange: "18+",
     sex: "ALL",

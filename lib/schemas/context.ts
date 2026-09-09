@@ -80,7 +80,14 @@ export const SubmissionContextSchema = z.object({
   /** e.g. "Anaemia Mukt Bharat" — the programme the deployment sits inside. */
   programmeLine: z.string().optional(),
   geography: z.string(),
-  deploymentMode: DeploymentModeEnum,
+  /**
+   * A LIST, not one value. Phase 1 modelled this as a single mode, but both the
+   * NeoScan and CerviAI contexts are "camp AND OPD queue" — screening runs in
+   * outreach camps and again in the clinic queue, on the same device, with the
+   * same operator. Forcing a choice between them would have made the frozen
+   * context on the card a smaller claim than the deployment it describes.
+   */
+  deploymentModes: z.array(DeploymentModeEnum).min(1),
   population: TargetPopulationSchema,
   autonomyLevel: AutonomyEnum,
 });
@@ -117,3 +124,66 @@ export const COMMUNITY_CARE_LEVELS: ReadonlyArray<ContextCareLevel> = [
   "SUB_CENTRE",
   "PHC",
 ];
+
+/** Deployment modes, in the words a card reader uses. */
+export const DEPLOYMENT_MODE_LABEL: Record<DeploymentMode, string> = {
+  CAMP: "screening camp",
+  OPD_QUEUE: "OPD queue",
+  WARD: "ward",
+  HOME_VISIT: "home visit",
+};
+
+/** Autonomy, spelled out so "RECOMMENDS" never reaches a reader raw. */
+export const AUTONOMY_LABEL: Record<Autonomy, string> = {
+  INFORMS: "informs, does not recommend",
+  RECOMMENDS: "recommends, does not decide",
+  DECIDES: "decides",
+};
+
+/**
+ * Which operator cadres a setting typically staffs. Used to work out which
+ * settings a card explicitly EXCLUDES: an assessment run with a staff nurse at
+ * a CHC says nothing about a sub-centre, which does not staff one.
+ *
+ * Deliberately about the CADRE rather than a notion of "smaller" facilities —
+ * a tool does not become unsafe because a building is smaller, it becomes
+ * unsafe because the person holding it was never assessed holding it.
+ */
+export const CADRE_AVAILABILITY: Record<ContextCareLevel, OperatorCadre[]> = {
+  SUB_CENTRE: ["ANM", "PATIENT", "NO_OPERATOR", "SELF_PROVIDED"],
+  PHC: ["ANM", "MO", "STAFF_NURSE", "LAB_TECHNICIAN", "PATIENT", "NO_OPERATOR", "SELF_PROVIDED"],
+  CHC: ["ANM", "MO", "STAFF_NURSE", "LAB_TECHNICIAN", "CLINICIAN", "PATIENT", "NO_OPERATOR", "SELF_PROVIDED"],
+  DISTRICT_HOSPITAL: ["ANM", "MO", "STAFF_NURSE", "LAB_TECHNICIAN", "CLINICIAN", "SPECIALIST", "PATIENT", "NO_OPERATOR", "SELF_PROVIDED"],
+  PRIVATE_SECONDARY: ["MO", "STAFF_NURSE", "LAB_TECHNICIAN", "CLINICIAN", "SPECIALIST", "PATIENT", "NO_OPERATOR", "SELF_PROVIDED"],
+  PRIVATE_TERTIARY: ["MO", "STAFF_NURSE", "LAB_TECHNICIAN", "CLINICIAN", "SPECIALIST", "PATIENT", "NO_OPERATOR", "SELF_PROVIDED"],
+  PRIVATE_CLINIC: ["MO", "STAFF_NURSE", "CLINICIAN", "PATIENT", "NO_OPERATOR", "SELF_PROVIDED"],
+};
+
+/** Public-procurement settings, in ladder order. */
+export const PUBLIC_CARE_LEVELS: ContextCareLevel[] = [
+  "SUB_CENTRE",
+  "PHC",
+  "CHC",
+  "DISTRICT_HOSPITAL",
+];
+
+/** Private-investment settings. */
+export const PRIVATE_CARE_LEVELS: ContextCareLevel[] = [
+  "PRIVATE_CLINIC",
+  "PRIVATE_SECONDARY",
+  "PRIVATE_TERTIARY",
+];
+
+/**
+ * Short care-level labels — the form a card reader actually says out loud.
+ * "at CHC level", not "at community health centre level".
+ */
+export const CARE_LEVEL_SHORT: Record<ContextCareLevel, string> = {
+  SUB_CENTRE: "sub-centre",
+  PHC: "PHC",
+  CHC: "CHC",
+  DISTRICT_HOSPITAL: "district hospital",
+  PRIVATE_SECONDARY: "private secondary",
+  PRIVATE_TERTIARY: "private tertiary",
+  PRIVATE_CLINIC: "private clinic",
+};
