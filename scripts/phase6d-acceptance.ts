@@ -151,7 +151,7 @@ const runCoverage = new Map<string, string>();
 for (const t of TOOLS) {
   const v = getCardV2(t.slug); const d = seededDeclaration(t.slug);
   if (!v || !d) continue;
-  const r = runAssessment({ declaration: d, evidence: v.evidence, conditions: v.card.conditions });
+  const r = runAssessment({ evidence: v.evidence, conditions: v.card.conditions });
   if (!runCoverage.has(r.outcome)) runCoverage.set(r.outcome, `${t.slug} → /submit/${t.slug}/assess`);
 }
 coversAll("Assessment outcome", ["ISSUE", "UNDER_ASSESSMENT"] as const, runCoverage);

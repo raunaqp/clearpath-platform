@@ -282,17 +282,16 @@ if (Math.abs(auto.inputs.groundedRate - 0.79) > 0.01 || Math.abs(lowConf.inputs.
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-section("5. Clarification — doc vs claim, and the recompute");
+section("5. Clarification — doc vs gate requirement, and the recompute");
 // ═════════════════════════════════════════════════════════════════════════
 
 const clar = getAssessmentFixture("clarification");
 const discrepancies = findDiscrepancies({
-  selfDeclaration: clar.selfDeclaration,
   scores: clar.scores,
   evidence: clar.evidence,
   path: "PUBLIC",
 });
-ok("7+ doc-vs-claim discrepancies found", discrepancies.length >= 7, `${discrepancies.length} found`);
+ok("7+ gates fall short of what they require", discrepancies.length >= 7, `${discrepancies.length} found`);
 const questions = buildClarifyingQuestions(discrepancies);
 eq(`capped at ${MAX_CLARIFYING_QUESTIONS} questions`, questions.length, MAX_CLARIFYING_QUESTIONS);
 ok(

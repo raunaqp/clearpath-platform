@@ -26,10 +26,10 @@ const threw = (fn: () => unknown) => { try { fn(); return null; } catch (e) { re
 const res = (ev: Evidence[]) => (id: string) => supportedLevel(ev.filter((e) => e.itemRefs.includes(id)));
 function questionsFor(slug: string, declaration: typeof CERVIAI_DECLARATION, evidence: Evidence[]) {
   const view = getCardV2(slug)!;
-  const run = runAssessment({ declaration, evidence, conditions: view.card.conditions });
+  const run = runAssessment({ evidence, conditions: view.card.conditions });
   const blockingItemIds = run.unsupportedGates.map((g) => legacyGateToItemId(g)!).filter(Boolean);
   const d = findDiscrepancies({
-    selfDeclaration: declaration, scores: new Map(), evidence, path: "PUBLIC",
+    scores: new Map(), evidence, path: "PUBLIC",
     supportsFromEvidence: res(evidence), blockingItemIds,
   });
   return { run, discrepancies: d, questions: buildClarifyingQuestions(d) };
@@ -41,8 +41,20 @@ section("1. Ranking — blocking first, then answerability");
 
 const cerv = questionsFor("cerviai", CERVIAI_DECLARATION, CERVIAI_EVIDENCE);
 eq("CerviAI already clears, so nothing is blocking", cerv.run.outcome, "ISSUE");
-eq("its five are the claims that outrun their documents",
-  cerv.questions.map((q) => q.gateId), ["G17", "G1", "G2", "G3", "G8"]);
+/**
+ * The five changed when the derivation did, and the change is the point.
+ *
+ * WAS ["G17","G1","G2","G3","G8"] — only gates the vendor had DECLARED were
+ * candidates, so a gate they said nothing about could never be asked about.
+ * NOW every gate is a candidate, because the comparison is against what the
+ * gate requires. G15 enters on that basis and displaces G8 on the tie-break.
+ *
+ * The RULES are unchanged: gate items first, then gap size, then gate id for
+ * stability. G1 and G17 lead on the largest gap (their only bound study does
+ * not transfer to this context); G15, G2 and G3 follow at one level short.
+ */
+eq("its five are the gates furthest from what they require",
+  cerv.questions.map((q) => q.gateId), ["G1", "G17", "G15", "G2", "G3"]);
 ok("capped at five even though more discrepancies exist",
   cerv.questions.length === MAX_CLARIFYING_QUESTIONS && cerv.discrepancies.length > 5,
   `${cerv.questions.length} of ${cerv.discrepancies.length}`);

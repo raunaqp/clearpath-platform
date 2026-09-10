@@ -6,26 +6,21 @@ import { ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 import type { GateStatus } from "@/lib/schemas/gate";
 import type { CareLevel, ToolCategory } from "@/lib/schemas/tool";
 import type { Document } from "@/lib/schemas/document";
-import {
-  DIMENSIONS,
-  TOOL_GATES,
-  type ToolGateId,
-} from "@/lib/engine/gates";
+import { type ToolGateId } from "@/lib/engine/gates";
 import { DOCUMENTS } from "@/lib/mock/fixtures/documents";
 import { createAssessment, registerSubmissionV2 } from "@/lib/mock/api";
 import type { SubmissionContext } from "@/lib/schemas/context";
 import { canBeAssessed } from "@/lib/schemas/context";
 import { ContextPanel } from "@/components/submit/ContextPanel";
 import { EvidenceManager, type DraftDoc } from "@/components/submit/EvidenceManager";
-import { IntakeChecklistView } from "@/components/submit/IntakeChecklistView";
+import { ChecklistStep } from "@/components/submit/ChecklistStep";
+import { DeclarationSummary } from "@/components/submit/DeclarationSummary";
 import type { ChecklistLine } from "@/lib/engine/intake-checklist";
 import { computeGeneralisability, computeExpiry } from "@/lib/engine/evidence";
-import { declarationsExceedingEvidence } from "@/lib/engine/assessment-run";
 import type { Level, SelfDeclaration } from "@/lib/schemas/score";
 import { CERVIAI_CONTEXT, CERVIAI_EVIDENCE } from "@/lib/mock/fixtures/cerviai-v2";
 import { RETINASCAN_CONTEXT, RETINASCAN_EVIDENCE } from "@/lib/mock/fixtures/retinascan-v2";
 import { WIZARD_EXAMPLES, type WizardExample } from "@/lib/wizard/examples";
-import { Segmented } from "@/components/wizard/Segmented";
 import { DocViewer } from "@/components/DocViewer";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -80,23 +75,16 @@ const CARE_LEVEL_OPTIONS: { value: CareLevel; label: string }[] = [
   { value: "home", label: "Patient-facing / home" },
 ];
 
-const GATE_OPTIONS = [
-  { value: "pass" as GateStatus, label: "Yes", tone: "pass" as const },
-  { value: "partial" as GateStatus, label: "Partial", tone: "partial" as const },
-  { value: "fail" as GateStatus, label: "No", tone: "fail" as const },
-];
-
 /**
  * The six stages a submission passes through.
  *
- * The wizard holds three of them inline — Context, Evidence, Declaration. The
- * Checklist renders as a panel at the top of the Evidence stage (and as its own
- * route once a submission exists), and Assessment and Card are their own
- * routes. So the stepper describes the whole journey while `step` only indexes
+ * The wizard holds four of them inline — Context, Checklist, Evidence and
+ * Declaration. Assessment and Card are their own routes. So the stepper
+ * describes the whole journey while `step` only indexes
  * the inline part; STEP_TO_STAGE maps between them.
  */
 const STAGE_LABELS = ["Context", "Checklist", "Evidence", "Declaration", "Assessment", "Card"];
-const STEP_TO_STAGE: Record<number, number> = { 1: 1, 2: 3, 3: 4, 4: 5 };
+const STEP_TO_STAGE: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 };
 
 /** A neutral starting context for a submission that is not a loaded example. */
 const EMPTY_CONTEXT: SubmissionContext = {
@@ -137,13 +125,19 @@ export default function SubmitWizard() {
    * and doing nothing.
    */
   const hydrated = useHydrated();
-  const [step, setStep] = useState(0); // 0 = start; 1..4 = the numbered steps
+  const [step, setStep] = useState(0); // 0 = start; 1..4 = the numbered steps, 5 = generating
   const [form, setForm] = useState<FormState>(EMPTY);
   const [answers, setAnswers] = useState<Partial<Record<ToolGateId, GateStatus>>>({});
   const [candidateDocs, setCandidateDocs] = useState<Document[]>([]);
   const [attached, setAttached] = useState<string[]>([]);
   const [context, setContext] = useState<SubmissionContext>(EMPTY_CONTEXT);
   const [docs, setDocs] = useState<DraftDoc[]>([]);
+  /**
+   * Checklist lines the vendor has ticked as not applying. Held separately
+   * from `docs` because it is a CLAIM, not an attachment, and the checklist
+   * step renders it as one.
+   */
+  const [notApplicable, setNotApplicable] = useState<string[]>([]);
 
   /**
    * Attach against ONE checklist line. The line supplies the evidence type, so
@@ -156,6 +150,9 @@ export default function SubmitWizard() {
       const doc: DraftDoc = {
         id: `ev-${line.id}-${Date.now()}-${i}`,
         submissionId: "draft",
+        // Which checklist line this arrived against. The checklist step groups
+        // by it; nothing downstream depends on it.
+        lineId: line.id,
         itemRefs: [],
         type: line.accepts[0],
         independence: "VENDOR_GENERATED",
@@ -176,6 +173,22 @@ export default function SubmitWizard() {
       return { ...doc, generalisability: computeGeneralisability(doc, context), expired: computeExpiry(doc) };
     });
     setDocs((prev) => [...prev, ...added]);
+    // A line that now has a document cannot also be "doesn't apply".
+    setNotApplicable((prev) => prev.filter((id) => id !== line.id));
+  }
+
+  function removeDoc(id: string) {
+    setDocs((prev) => {
+      const doc = prev.find((d) => d.id === id);
+      if (doc?.objectUrl) URL.revokeObjectURL(doc.objectUrl);
+      return prev.filter((d) => d.id !== id);
+    });
+  }
+
+  function toggleNotApplicable(lineId: string) {
+    setNotApplicable((prev) =>
+      prev.includes(lineId) ? prev.filter((id) => id !== lineId) : [...prev, lineId]
+    );
   }
   const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -225,7 +238,18 @@ export default function SubmitWizard() {
     return [...attached, ...missing];
   }
 
-  /** The 17 answers as a v2 self-declaration. */
+  /**
+   * The v2 self-declaration.
+   *
+   * A FRESH submission declares nothing: the 17-question questionnaire is gone,
+   * so `answers` is empty and every gate resolves from the evidence or comes
+   * back UNSCORED. That is the point — a card cannot be talked up by answering
+   * questions about your own tool.
+   *
+   * A LOADED EXAMPLE still carries the fixture's answers, because an example
+   * stands for a tool that has already been through an assessment. Its history
+   * is data, not something the current user is asserting.
+   */
   function declaration(submissionId: string): SelfDeclaration {
     const gateAnswers: SelfDeclaration["gateAnswers"] = {};
     for (const [gid, status] of Object.entries(answers)) {
@@ -290,21 +314,16 @@ export default function SubmitWizard() {
     }
   }
 
-  const answeredCount = useMemo(
-    () => Object.values(answers).filter(Boolean).length,
-    [answers]
-  );
-
   /**
-   * Gates where the vendor's own answer sits above what the attached documents
-   * can carry. Derived on every change from the current answers and the current
-   * attachments — never a stored or hardcoded count — so it moves as evidence
-   * arrives. It is a prompt to attach something, not a finding about the tool.
+   * The attachments in the shape the engine reads: File handles and the
+   * UI-only line binding stripped. Derived, never stored — the declaration
+   * summary recomputes as documents arrive, which is the most useful
+   * behaviour in the wizard and was the one thing worth keeping from the
+   * band the questionnaire used to carry.
    */
-  const exceeding = useMemo(
-    () => declarationsExceedingEvidence(declaration("draft"), docs),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [answers, docs]
+  const evidenceForEngine = useMemo(
+    () => docs.map(({ file: _f, objectUrl: _u, lineId: _l, ...e }) => e),
+    [docs]
   );
 
   // ── Step 0 · Start ─────────────────────────────────────────────────────────
@@ -418,92 +437,36 @@ export default function SubmitWizard() {
         </StepShell>
       )}
 
-      {/* ── Step 3 · Basic questions (17 gates) — answer against the evidence ── */}
-      {step === 3 && (
-        <StepShell title="Innovator declaration" onBack={() => setStep(2)}
-          onNext={() => { setStep(4); void generate(); }} nextLabel="Submit for assessment"
-          subtitle="Your own assessment against 17 gate questions. ClearPath assesses these independently against your evidence in the next step.">
+      {/* ── Step 4 · Declaration — a summary, not a questionnaire ─────────── */}
+      {step === 4 && (
+        <StepShell title="Innovator declaration" onBack={() => setStep(3)}
+          onNext={() => { setStep(5); void generate(); }} nextLabel="Submit for assessment"
+          subtitle="What you attached, and what it establishes. ClearPath assesses this independently in the next step.">
           {error && <p className="mb-3 text-sm text-coral-brand">{error}</p>}
-          {/*
-            DECLARATION COMPLETENESS — not a verdict, and the word does not
-            appear on this screen.
-
-            The band this replaced announced a verdict while the vendor was
-            still choosing answers, which is precisely what made the flow read
-            as self-certification: the tool appeared to grade itself from its
-            own answers, before anyone had looked at a document.
-
-            It stays LIVE, because live was never the problem. Watching the
-            "exceeds" count move as you attach evidence is the most useful
-            behaviour in the wizard. The problem was that it called itself a
-            verdict, and that it showed per-dimension percentages — which belong
-            on the card, on the 0-2 ladder, after an assessment has happened.
-          */}
-          <div className="rounded-card border border-teal-deep/30 bg-teal-light/30 px-4 py-3">
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-teal-deep">
-              Declaration completeness
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-ink">
-              {answeredCount}/17 answered · {docs.length} {docs.length === 1 ? "document" : "documents"}
-              {exceeding.length > 0 && (
-                <>
-                  {" · "}
-                  {exceeding.length} {exceeding.length === 1 ? "declaration" : "declarations"} exceed
-                  what the attached evidence currently shows
-                </>
-              )}
-            </p>
-            {exceeding.length > 0 && (
-              <p className="mt-1 font-mono text-xs text-muted">
-                {exceeding.map((e) => e.gateId).join(", ")}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-6">
-            {(["D1", "D2", "D3", "D4"] as const).map((dim) => (
-              <div key={dim}>
-                <h3 className="mb-2 text-sm text-muted">{DIMENSIONS[dim].title}</h3>
-                <div className="divide-y divide-line-soft rounded-card border border-line bg-bg-card">
-                  {DIMENSIONS[dim].gates.map((gid: ToolGateId) => (
-                    <div key={gid} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="pr-4 text-sm text-ink">
-                        <span className="text-muted">{gid}</span> · {TOOL_GATES[gid].question}
-                      </p>
-                      <Segmented
-                        ariaLabel={TOOL_GATES[gid].title}
-                        options={GATE_OPTIONS}
-                        value={answers[gid]}
-                        onChange={(v) => setAnswers((a) => ({ ...a, [gid]: v }))}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <DeclarationSummary evidence={evidenceForEngine} />
         </StepShell>
       )}
 
-      {/* ── Step 2 · Checklist + evidence ───────────────────────────────────── */}
+      {/* ── Step 2 · Checklist — its own step, seen BEFORE attaching ──────── */}
       {step === 2 && (
-        <StepShell title="Evidence" onBack={() => setStep(1)} onNext={() => setStep(3)}>
-          <div className="space-y-6">
-            <details className="rounded-card border border-line bg-bg-card" open>
-              <summary className="cursor-pointer px-4 py-3 text-sm text-ink">
-                Intake checklist — what this submission is expected to include
-              </summary>
-              <div className="border-t border-line-soft p-4">
-                <IntakeChecklistView
-                  category={(form.category || "screening") as ToolCategory}
-                  context={context}
-                  attached={docs}
-                  compact
-                  onAttach={attachToLine}
-                />
-              </div>
-            </details>
+        <StepShell title="Checklist" onBack={() => setStep(1)} onNext={() => setStep(3)}
+          subtitle="Generated from the context you declared. Attach against a line, or say it does not apply.">
+          <ChecklistStep
+            category={(form.category || "screening") as ToolCategory}
+            context={context}
+            docs={docs.map((d) => ({ id: d.id, name: d.name, lineId: d.lineId ?? null }))}
+            notApplicable={notApplicable}
+            onToggleNotApplicable={toggleNotApplicable}
+            onAttach={attachToLine}
+            onRemove={removeDoc}
+          />
+        </StepShell>
+      )}
 
+      {/* ── Step 3 · Evidence — the summarised view of what is attached ────── */}
+      {step === 3 && (
+        <StepShell title="Evidence" onBack={() => setStep(2)} onNext={() => setStep(4)}>
+          <div className="space-y-6">
             <EvidenceManager
               docs={docs}
               context={context}
@@ -524,8 +487,8 @@ export default function SubmitWizard() {
         </StepShell>
       )}
 
-      {/* ── Step 4 · Generating ─────────────────────────────────────────────── */}
-      {step === 4 && (
+      {/* ── Step 5 · Generating ─────────────────────────────────────────────── */}
+      {step === 5 && (
         <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-teal-deep" />
           <p className="font-serif text-lg text-ink">Assessing across 4 dimensions…</p>
@@ -541,10 +504,10 @@ export default function SubmitWizard() {
 /**
  * The six-stage progress rail.
  *
- * `step` indexes the three INLINE wizard steps; the rail shows all six stages
- * of the journey, including the two that are their own routes. Stage 2
- * (Checklist) is marked reached when the vendor is on the Evidence stage,
- * because the checklist renders at the top of that screen.
+ * `step` indexes the four INLINE wizard steps; the rail shows all six stages
+ * of the journey, including the two that are their own routes. The mapping is
+ * 1:1 now that the checklist is a step of its own rather than a panel folded
+ * into Evidence.
  */
 function WizardProgress({ step }: { step: number }) {
   const stage = STEP_TO_STAGE[step] ?? 1;

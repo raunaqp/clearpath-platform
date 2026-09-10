@@ -144,16 +144,40 @@ try {
   await click("Deployable build");
   await wait(400);
 
-  await gotoWizardStage("Evidence");
+  // ── S2 is a STEP of its own now, not a panel folded into Evidence ────────
+  await gotoWizardStage("Checklist");
 
-  console.log("\n── S2 · Intake checklist ──");
+  console.log("\n── S2 · Intake checklist, as its own step ──");
   t = await txt();
   ok("six checklist groups",
     ["Regulatory", "Clinical", "DPDP and security", "Interoperability", "Logistics", "Training"].every((g) => t.includes(g)));
   ok("completion is counted against lines, not a score", /required lines have a document/.test(t));
-  ok("no percentage or score on the checklist", !/\d+\s?%/.test(t.split("Attach a document")[0] ?? ""));
+  ok("no percentage or score on the checklist", !/\d+\s?%/.test(t));
+  // The whole reason the list is generated from context: the vendor sees what
+  // is expected BEFORE meeting an upload control.
+  ok("the checklist is reached before any evidence is attached", !t.includes("acme-field-report"));
+  ok("every row can be attached against", (await page.evaluate(() => document.querySelectorAll('input[type="file"]').length)) > 5);
 
+  // ── a checked row with NO document says so, rather than looking complete ──
+  const naBefore = await txt();
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll("button")].find((e) => e.textContent.trim() === "Doesn't apply");
+    if (b) b.click();
+  });
+  await wait(500);
+  t = await txt();
+  ok("a row can be marked as not applying", t !== naBefore && /marked as not applying/i.test(t));
+  ok("…and is named as a claim, not shown as complete",
+    /this is a claim you are making/i.test(t) && /not a document on file/i.test(t));
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll("button")].find((e) => e.textContent.trim() === "Applies after all");
+    if (b) b.click();
+  });
+  await wait(400);
+
+  await gotoWizardStage("Evidence");
   console.log("\n── S3 · Evidence with a real upload ──");
+  t = await txt();
   ok("THE DEAD END IS GONE (no 'no sample documents' copy)", !t.includes("No sample documents for a custom tool"));
   ok("files are labelled session-only", t.includes("Uploaded files are held for this session only"));
 
@@ -184,30 +208,29 @@ try {
   console.log("\n── S4 · Innovator declaration ──");
   t = await txt();
   ok("titled 'Innovator declaration'", t.includes("Innovator declaration"));
-  ok("sub-line names the independent assessment", t.includes("ClearPath assesses these independently against your evidence in the next step"));
-  ok("declaration completeness band, not a verdict band", /declaration completeness/i.test(t));
+  ok("sub-line names the independent assessment", t.includes("ClearPath assesses this independently in the next step"));
+  // The "declaration completeness" band went with the questionnaire it counted.
+  // What replaces it is a statement of what is ON FILE — no completeness, and
+  // still no verdict.
+  ok("an on-file band, not a completeness band and not a verdict band",
+    /what is on file/i.test(t) && !/declaration completeness/i.test(t));
   ok("the word 'verdict' is absent from this screen", !/verdict/i.test(t));
   ok("no per-dimension percentages", !/D1 \d+%/.test(t));
 
   // The BODH pre-fill button is REMOVED, so nothing seeds the counter. The
   // N/17 literal itself is what the site-wide suite depends on, and it still
   // renders — starting at 0 and moving as questions are answered by hand.
-  ok("the 'N/17 answered' literal survives (browser suite depends on it)", t.includes("0/17 answered"));
-  await page.evaluate(() => {
-    const yes = [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Yes");
-    yes.slice(0, 3).forEach((b) => b.click());
-  });
-  await wait(700);
-  t = await txt();
-  ok("…and the counter moves as questions are answered by hand", t.includes("3/17 answered"));
-
-  await page.evaluate(() => {
-    [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Yes").forEach((b) => b.click());
-  });
-  await wait(800);
-  t = await txt();
-  ok("completeness updates live to 17/17", t.includes("17/17 answered"));
-  ok("declarations exceeding the evidence are counted", /declarations? exceed what the attached evidence currently shows/.test(t));
+  // THE QUESTIONNAIRE IS GONE. The vendor asserts nothing on this screen; it
+  // summarises what they attached and what it establishes.
+  ok("no gate questions to answer", !/\d+\/17 answered/.test(t)
+    && !(await page.evaluate(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Partial"))));
+  ok("half one — what you attached", /what you attached/i.test(t) && t.includes("acme-field-report"));
+  ok("…naming the gates that document answers", /answers G1/.test(t));
+  ok("half two — what we found", /what we found/i.test(t));
+  ok("…both the gates the documents carry and the ones nothing speaks to",
+    /(carry|carries|carried)/i.test(t) && /don.t yet\s+establish/i.test(t.replace(/\s+/g, " ")));
+  ok("…and gaps are named in words, not a gate-code label",
+    /nothing on file/i.test(t) || /generated elsewhere/i.test(t) || /not independent/i.test(t));
 
   console.log("\n── S5 · Assessment transition ──");
   const submitted = await clickUntil(
@@ -240,7 +263,9 @@ try {
   }
   await wait(400);
   t = await txt();
-  ok("three resolving stages", t.includes("to gates and items") && t.includes("Checking declaration against evidence") && t.includes("Scoring against the 17 demo gates"));
+  // Middle stage renamed: there is no declaration to check any more, so it
+  // says what it actually does — each gate against what is on file.
+  ok("three resolving stages", t.includes("to gates and items") && t.includes("Checking each gate against what is on file") && t.includes("Scoring against the 17 demo gates"));
   ok("scope banner verbatim", t.includes("Full funded assessment covers 112 items and at least two blind independent assessors scoring in parallel with an AI pass"));
   ok("qualitative coverage only", /evidence coverage/i.test(t) && /(high|moderate|limited)/i.test(t));
   ok("NO numeric confidence or grounding figure", !/\d+\s?%/.test(t) && !/confidence/i.test(t));

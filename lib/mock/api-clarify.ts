@@ -58,12 +58,10 @@ export function buildClarifyState(slug: string): ClarifyState | undefined {
   const withBindings = applyBindings(view.evidence, answers);
 
   const baseline = runAssessment({
-    declaration,
     evidence: view.evidence,
     conditions: view.card.conditions,
   });
   const run = runAssessment({
-    declaration,
     evidence: withBindings,
     conditions: view.card.conditions,
   });
@@ -79,7 +77,6 @@ export function buildClarifyState(slug: string): ClarifyState | undefined {
     .filter((id): id is string => Boolean(id));
 
   const discrepancies = findDiscrepancies({
-    selfDeclaration: declaration,
     scores: new Map(),
     evidence: view.evidence,
     path: "PUBLIC",

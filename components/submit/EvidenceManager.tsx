@@ -58,6 +58,12 @@ export type DraftDoc = Evidence & {
   /** Present only for a file the vendor picked this session. Never persisted. */
   file?: File;
   objectUrl?: string;
+  /**
+   * The checklist line this document was attached against. UI-only: it groups
+   * the document under its row on the checklist step and is stripped before
+   * anything reaches the engine.
+   */
+  lineId?: string | null;
 };
 
 export function EvidenceManager({

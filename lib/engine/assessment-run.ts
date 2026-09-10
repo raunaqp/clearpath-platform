@@ -4,12 +4,11 @@
  * ─────────────────────────────────────────────────────────────────────────
  * WHY THIS EXISTS AT ALL
  * ─────────────────────────────────────────────────────────────────────────
- * Without it, a vendor answers seventeen questions and a card appears. That
- * reads as a calculator: the card looks like a restatement of the vendor's own
- * answers, because that is very nearly what it is. Making the assessment a
- * separate, visible act — documents mapped, declaration checked AGAINST them,
- * then scoring — is the difference between a form that echoes and a process
- * that examines.
+ * The seventeen-question declaration is gone: a card assembled from a vendor's
+ * answers about their own tool reads as a calculator, because that is very
+ * nearly what it was. What remains is the act itself — documents mapped,
+ * checked against what each gate REQUIRES, then scoring — which is the
+ * difference between a form that echoes and a process that examines.
  *
  * ─────────────────────────────────────────────────────────────────────────
  * NO NUMBERS. NOT ONE.
@@ -21,12 +20,12 @@
  * are deliberately not returned — a caller cannot render what it cannot reach.
  *
  * The one count that IS shown is a count of things, not a measure of quality:
- * how many documents were mapped, how many discrepancies were found. Counting
- * discrepancies is not scoring them.
+ * how many documents were mapped, how many gates have a gap. Counting gaps is
+ * not scoring them.
  */
 
 import type { Evidence } from "@/lib/schemas/evidence";
-import type { Level, SelfDeclaration } from "@/lib/schemas/score";
+import type { Level } from "@/lib/schemas/score";
 import type { CardCondition } from "@/lib/schemas/readiness-card";
 import { itemForLegacyGate, getItem, gateItems } from "./item-bank";
 import { TRIAL_BLOCKING_CLUSTERS } from "./verdict";
@@ -36,42 +35,49 @@ import { softenCertainty } from "./soften-certainty";
 export type CoverageBand = "high" | "moderate" | "limited";
 
 /**
- * A gap between what the vendor declared and what is on file.
+ * A gap between what a GATE REQUIRES and what is on file for it.
+ *
+ * This used to compare a document against the vendor's own declared level.
+ * There is no declaration any more — the 17-question questionnaire is gone,
+ * because a card assembled from a vendor's answers about their own tool reads
+ * as self-certification however carefully it is labelled. The comparison is
+ * now against the gate's requirement, which is the same for every submission
+ * and is not something the submitter can set.
  *
  * THREE checkable tests, none of which requires reading a document:
  *
- *   UNEVIDENCED  declared at all, in a cluster whose questions cannot be
- *                answered by assertion — safety, legality, consent, data
- *                handling — with no document bound to the gate.
+ *   NO_EVIDENCE      nothing on file is bound to the gate's item. In a cluster
+ *                    whose questions cannot be answered by assertion — safety,
+ *                    legality, consent, data handling — this is decisive and
+ *                    routes the submission to an assessor.
  *
- *   NON_TRANSFERRING  declared at all, where EVERY document bound to the gate
- *                     is generalisability-limited. The evidence exists; it was
+ *   NON_TRANSFERRING  documents exist, and EVERY one of them is
+ *                     generalisability-limited. The evidence exists; it was
  *                     generated somewhere this deployment is not.
  *
- *   UNCORROBORATED  documents exist and do transfer, but the declaration sits
- *                   above what they can carry — every one of them is
- *                   vendor-generated and states a limitation.
+ *   UNCORROBORATED   documents exist and do transfer, but cannot carry the
+ *                    gate on their own — every one is vendor-generated and
+ *                    states a limitation.
  *
- * ONE DERIVATION, TWO SCREENS. The declaration step and the assessment step
- * both call `findDiscrepancies`. They used to compute their own, and reported
- * five and two for the same submission — two screens disagreeing about one
- * fact, which is the same class of defect as a card that issues off assertion
- * alone. The acceptance harness asserts the two agree.
+ * ONE DERIVATION, TWO SCREENS. The declaration summary and the assessment step
+ * both call `findGateGaps`. They used to compute their own and reported five
+ * and two for the same submission — two screens disagreeing about one fact.
+ * The acceptance harness asserts the two agree.
  */
-export type DiscrepancyKind = "UNEVIDENCED" | "NON_TRANSFERRING" | "UNCORROBORATED";
+export type GateGapKind = "NO_EVIDENCE" | "NON_TRANSFERRING" | "UNCORROBORATED";
 
-export type DeclarationDiscrepancy = {
+export type GateGap = {
   gateId: string;
   itemId: string;
-  kind: DiscrepancyKind;
-  declared: Level;
+  kind: GateGapKind;
   /** What the bound documents can carry on their own. */
   supported: Level;
+  /** True where assertion is not admissible for this cluster. */
+  blocking: boolean;
   explanation: string;
 };
 
 export type AssessmentRunInput = {
-  declaration: SelfDeclaration;
   evidence: Evidence[];
   conditions: CardCondition[];
 };
@@ -80,7 +86,7 @@ export type AssessmentRun = {
   /** Documents mapped to gates and items. A count of things, not a score. */
   documentsMapped: number;
   itemsTouched: number;
-  discrepancies: DeclarationDiscrepancy[];
+  gateGaps: GateGap[];
   /** Qualitative band. Never accompanied by the ratio behind it. */
   evidenceCoverage: CoverageBand;
   /**
@@ -115,66 +121,60 @@ function boundItems(evidence: Evidence[]): Map<string, Evidence[]> {
 }
 
 /**
- * THE single derivation of doc-versus-claim gaps. Both S4 and S5 call this.
+ * THE single derivation of doc-versus-gate-requirement gaps.
+ *
+ * Iterates the GATES, not a declaration. A gate whose documents already carry
+ * it is not a gap and is not reported.
  */
-export function findDiscrepancies(
-  declaration: SelfDeclaration,
-  evidence: Evidence[]
-): DeclarationDiscrepancy[] {
+export function findGateGaps(evidence: Evidence[]): GateGap[] {
   const bound = boundItems(evidence);
-  const out: DeclarationDiscrepancy[] = [];
+  const out: GateGap[] = [];
 
-  for (const [gateId, declared] of Object.entries(declaration.gateAnswers)) {
-    if (declared === undefined) continue;
-    const item = itemForLegacyGate(gateId);
-    if (!item) continue;
-
+  for (const item of gateItems("PUBLIC")) {
+    const gateId = item.legacyGateId ?? item.id;
     const docs = bound.get(item.id) ?? [];
-    const trialBlocking = TRIAL_BLOCKING_CLUSTERS.includes(item.clusterCode);
+    const blocking = TRIAL_BLOCKING_CLUSTERS.includes(item.clusterCode);
 
     if (docs.length === 0) {
-      // Assertion is not evidence for safety, legality, consent or data
-      // handling. Elsewhere a declaration stands on its own until an assessor
-      // looks, so an unevidenced D2 or D3 gate is not flagged here.
-      if (trialBlocking && declared >= 1) {
-        out.push({
-          gateId,
-          itemId: item.id,
-          kind: "UNEVIDENCED",
-          declared,
-          supported: 0,
-          explanation: softenCertainty(
-            `Declared, with no document on file bound to ${item.id}. This gate sits in ${item.clusterCode}, where a claim cannot stand on assertion.`
-          ),
-        });
-      }
+      out.push({
+        gateId,
+        itemId: item.id,
+        kind: "NO_EVIDENCE",
+        supported: 0,
+        blocking,
+        explanation: softenCertainty(
+          blocking
+            ? `Nothing on file is bound to ${item.id}. This gate sits in ${item.clusterCode}, where a claim cannot stand on assertion — an assessor looks before the card issues.`
+            : `Nothing on file is bound to ${item.id}, so the assessment is silent on this gate rather than assuming either way.`
+        ),
+      });
       continue;
     }
 
-    if (declared >= 1 && docs.every((d) => d.generalisability.limited)) {
+    if (docs.every((d) => d.generalisability.limited)) {
       out.push({
         gateId,
         itemId: item.id,
         kind: "NON_TRANSFERRING",
-        declared,
         supported: 0,
+        blocking,
         explanation: softenCertainty(
-          `Declared, and every document bound to ${item.id} was generated somewhere this deployment is not. The evidence exists; whether it carries here is a judgement for an assessor.`
+          `Every document bound to ${item.id} was generated somewhere this deployment is not. The evidence exists; whether it carries here is a judgement for an assessor.`
         ),
       });
       continue;
     }
 
     const supported = supportedLevel(docs);
-    if (declared > supported) {
+    if (supported < 2) {
       out.push({
         gateId,
         itemId: item.id,
         kind: "UNCORROBORATED",
-        declared,
         supported,
+        blocking,
         explanation: softenCertainty(
-          `Declared above what the documents bound to ${item.id} can carry on their own — each is vendor-generated and states a limitation. Admissible, and not yet independent of the claimant.`
+          `The documents bound to ${item.id} cannot carry this gate on their own — each is vendor-generated and states a limitation. Admissible, and not yet independent of the claimant.`
         ),
       });
     }
@@ -183,9 +183,17 @@ export function findDiscrepancies(
   return out;
 }
 
+/** Gates the documents DO establish — the other half of the summary. */
+export function gatesEstablished(evidence: Evidence[]): string[] {
+  const gaps = new Set(findGateGaps(evidence).map((g) => g.gateId));
+  return gateItems("PUBLIC")
+    .map((i) => i.legacyGateId ?? i.id)
+    .filter((g) => !gaps.has(g));
+}
+
 export function runAssessment(input: AssessmentRunInput): AssessmentRun {
   const bound = boundItems(input.evidence);
-  const discrepancies = findDiscrepancies(input.declaration, input.evidence);
+  const gateGaps = findGateGaps(input.evidence);
 
   // ── unsupported gates: nothing on file to read ───────────────────────────
   // TWO SOURCES, and the second one closes the loophole that matters.
@@ -209,8 +217,11 @@ export function runAssessment(input: AssessmentRunInput): AssessmentRun {
       unsupported.add(item.legacyGateId ?? c.itemId);
     }
   }
-  for (const d of discrepancies) {
-    if (d.kind === "UNEVIDENCED") unsupported.add(d.gateId);
+  // Only the BLOCKING no-evidence gates route to a human. A gate outside those
+  // clusters with nothing on file is reported on the summary and leaves the
+  // card silent on it; it is not a reason to hold the submission.
+  for (const g of gateGaps) {
+    if (g.kind === "NO_EVIDENCE" && g.blocking) unsupported.add(g.gateId);
   }
 
   const unsupportedGates = [...unsupported];
@@ -236,7 +247,7 @@ export function runAssessment(input: AssessmentRunInput): AssessmentRun {
   return {
     documentsMapped: input.evidence.length,
     itemsTouched: new Set(input.evidence.flatMap((e) => e.itemRefs)).size,
-    discrepancies,
+    gateGaps,
     evidenceCoverage,
     unsupportedGates,
     outcome,
@@ -291,14 +302,10 @@ export function supportedLevel(docs: Evidence[]): Level {
 }
 
 /**
- * The S4 band's count. A thin wrapper so the declaration step and the
- * assessment step can never report different numbers for the same submission.
+ * The declaration summary's count, named as the screen names it: "N gates your
+ * documents don't yet establish". A thin alias over the one derivation, so the
+ * summary and the assessment step can never report different numbers.
  */
-export type DeclarationGap = DeclarationDiscrepancy;
-
-export function declarationsExceedingEvidence(
-  declaration: SelfDeclaration,
-  evidence: Evidence[]
-): DeclarationGap[] {
-  return findDiscrepancies(declaration, evidence);
+export function gatesNotYetEstablished(evidence: Evidence[]): GateGap[] {
+  return findGateGaps(evidence);
 }

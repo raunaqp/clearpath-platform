@@ -4,7 +4,7 @@
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { runAssessment, findDiscrepancies, declarationsExceedingEvidence } from "@/lib/engine/assessment-run";
+import { runAssessment, findGateGaps, gatesNotYetEstablished } from "@/lib/engine/assessment-run";
 import { assertListable, buildListing } from "@/lib/engine/listing";
 import { matchToolToSites, MATCH_BAND_LABEL } from "@/lib/match";
 import { buildCerviaiCardV1, buildCerviaiCardV11, CERVIAI_DECLARATION, CERVIAI_EVIDENCE } from "@/lib/mock/fixtures/cerviai-v2";
@@ -27,13 +27,17 @@ const { card: v11 } = buildCerviaiCardV11(v1);
 section("0. Carry-overs");
 // ═════════════════════════════════════════════════════════════════════════
 
-const s5 = runAssessment({ declaration: CERVIAI_DECLARATION, evidence: CERVIAI_EVIDENCE, conditions: v1.conditions });
-const s4 = declarationsExceedingEvidence(CERVIAI_DECLARATION, CERVIAI_EVIDENCE);
-eq("S4 and S5 report the SAME discrepancy count", [s4.length, s5.discrepancies.length], [5, 5]);
-eq("…and the same gates", s4.map((d) => d.gateId).sort(), s5.discrepancies.map((d) => d.gateId).sort());
-ok("both come from one function", declarationsExceedingEvidence === (findDiscrepancies as unknown) || s4.length === findDiscrepancies(CERVIAI_DECLARATION, CERVIAI_EVIDENCE).length);
+const s5 = runAssessment({ evidence: CERVIAI_EVIDENCE, conditions: v1.conditions });
+const s4 = gatesNotYetEstablished(CERVIAI_EVIDENCE);
+// ONE DERIVATION, TWO SCREENS. The declaration summary and the assessment step
+// have to report the same gaps for the same submission — they once reported
+// five and two, which is the same class of defect as a card issued off
+// assertion alone.
+eq("S4 and S5 report the SAME gap count", [s4.length, s5.gateGaps.length], [15, 15]);
+eq("…and the same gates", s4.map((d) => d.gateId).sort(), s5.gateGaps.map((d) => d.gateId).sort());
+ok("both come from one function", s4.length === findGateGaps(CERVIAI_EVIDENCE).length);
 
-const rs = runAssessment({ declaration: RETINASCAN_DECLARATION, evidence: RETINASCAN_EVIDENCE, conditions: [] });
+const rs = runAssessment({ evidence: RETINASCAN_EVIDENCE, conditions: [] });
 eq("RetinaScan still routes to human review", rs.outcome, "UNDER_ASSESSMENT");
 
 const wizardSrc = readFileSync("app/submit/page.tsx", "utf8");

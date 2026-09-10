@@ -29,14 +29,12 @@ import { itemsWithEvidence } from "./evidence";
 import { softenCertainty } from "./soften-certainty";
 
 // ═════════════════════════════════════════════════════════════════════════
-// MECHANISM A — clarifying questions (doc vs claim)
+// MECHANISM A — clarifying questions (doc vs what the gate requires)
 // ═════════════════════════════════════════════════════════════════════════
 
 export type Discrepancy = {
   gateId: LegacyGateId;
   itemId: string;
-  /** What the vendor said in the 17-gate wizard. */
-  claimed: Level;
   /** What the evidence supports. null = no evidence was found for this gate. */
   evidenceSupports: Level | null;
   /** Ranking weight. Higher is asked about first. */
@@ -53,16 +51,14 @@ export type Discrepancy = {
 export const MAX_CLARIFYING_QUESTIONS = 5;
 
 export type DiscrepancyInput = {
-  selfDeclaration: SelfDeclaration;
   /** What the assessment established per item, from the AI or an assessor. */
   scores: Map<string, ItemScore>;
   evidence: Evidence[];
   path: "PUBLIC" | "PRIVATE";
   /**
    * What the DOCUMENTS bound to an item can carry, where no AI or assessor has
-   * scored it. Without this the ranking is blind on a self-declared submission:
-   * every gate looks equally unsupported and the five questions come out in
-   * alphabetical order.
+   * scored it. Without this the ranking is blind: every gate looks equally
+   * unsupported and the five questions come out in alphabetical order.
    */
   supportsFromEvidence?: (itemId: string) => Level | null;
   /**
@@ -77,13 +73,14 @@ export type DiscrepancyInput = {
  *
  *   +100  the item is a gate at all
  *   +50   this gate is BLOCKING the submission from issuing
- *   +10   per level of gap between the claim and what the evidence reaches
+ *   +10   per level of gap between what the GATE REQUIRES (2) and what the
+ *         evidence reaches
  *   -20   NOTHING is on file for this gate
  *
  * THE PENALTY FOR "NOTHING ON FILE" IS DELIBERATE, and it reverses an earlier
  * tie-breaker that added for it.
  *
- * The two rules were measuring different things. For SEVERITY, a claim with
+ * The two rules were measuring different things. For SEVERITY, a gate with
  * nothing behind it is worse. But this ranking decides which questions get
  * ASKED, and there the criterion is answerability: a gap against a document
  * that exists can be closed by an answer — the vendor points at section 4 and
@@ -92,7 +89,8 @@ export type DiscrepancyInput = {
  *
  * Left as it was, every unevidenced gate tied at the top and the five questions
  * came out in alphabetical order — G10, G11, G12, G13, G14 — which is not a
- * ranking at all.
+ * ranking at all. That is truer now than it was: without a declaration, EVERY
+ * gate is a candidate, so the ranking is the only thing choosing the five.
  *
  * BLOCKING DOMINATES BOTH. Ask first about what is actually holding the
  * submission up. Answerability decides the order among gates that are merely
@@ -101,13 +99,15 @@ export type DiscrepancyInput = {
  * ask the right five questions, rather than one being tuned at the other's
  * expense.
  */
+/** What every gate has to reach. Fixed, and not something a submitter sets. */
+const GATE_REQUIRES: Level = 2;
+
 function materialityOf(
   item: AssessmentItem,
-  claimed: Level,
   supports: Level | null,
   blocking: boolean
 ): number {
-  const gap = claimed - (supports ?? 0);
+  const gap = GATE_REQUIRES - (supports ?? 0);
   let m = item.isGate ? 100 : 0;
   if (blocking) m += 50;
   m += Math.max(0, gap) * 10;
@@ -120,11 +120,11 @@ export function findDiscrepancies(input: DiscrepancyInput): Discrepancy[] {
   const withEvidence = itemsWithEvidence(input.evidence);
   const blocking = new Set(input.blockingItemIds ?? []);
 
-  for (const [gateId, claimed] of Object.entries(input.selfDeclaration.gateAnswers)) {
-    if (claimed === undefined) continue;
-    const item = itemForLegacyGate(gateId);
-    if (!item) continue;
-    if (item.path !== "BOTH" && item.path !== input.path) continue;
+  // Iterate the GATES. There is no declaration to iterate any more — the
+  // question is what each gate requires against what is on file for it, which
+  // is the same question for every submission.
+  for (const item of gateItems(input.path)) {
+    const gateId = (item.legacyGateId ?? item.id) as LegacyGateId;
 
     const score = input.scores.get(item.id);
     // No evidence bound to the item, or nothing scored it → nothing supports it.
@@ -141,16 +141,14 @@ export function findDiscrepancies(input: DiscrepancyInput): Discrepancy[] {
               ) as Level)
             : (score.aiScore?.level ?? null));
 
-    // Only a claim the evidence does not reach is a discrepancy. A vendor
-    // under-claiming is not something to interrogate them about.
-    if (supports !== null && supports >= claimed) continue;
+    // A gate the evidence already carries is not something to ask about.
+    if (supports !== null && supports >= GATE_REQUIRES) continue;
 
     out.push({
-      gateId: gateId as LegacyGateId,
+      gateId,
       itemId: item.id,
-      claimed,
       evidenceSupports: supports,
-      materiality: materialityOf(item, claimed, supports, blocking.has(item.id)),
+      materiality: materialityOf(item, supports, blocking.has(item.id)),
     });
   }
 
@@ -184,8 +182,8 @@ export function buildClarifyingQuestions(
     const subject = item?.text ?? d.itemId;
     const why =
       d.evidenceSupports === null
-        ? `You answered "${LEVEL_WORD[d.claimed]}" for ${d.gateId}, and no document on file is bound to ${d.itemId}.`
-        : `You answered "${LEVEL_WORD[d.claimed]}" for ${d.gateId}; the evidence on file reads as "${LEVEL_WORD[d.evidenceSupports]}".`;
+        ? `Nothing on file is bound to ${d.itemId}, so ${d.gateId} is not established either way.`
+        : `The evidence on file for ${d.gateId} reads as "${LEVEL_WORD[d.evidenceSupports]}", short of what this gate requires.`;
 
     return {
       id: `q-${d.gateId}`,

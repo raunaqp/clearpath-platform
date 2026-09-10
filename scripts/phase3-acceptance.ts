@@ -13,7 +13,8 @@ import { join } from "node:path";
 import { buildIntakeChecklist, computeCoverage } from "@/lib/engine/intake-checklist";
 import {
   ASSESSMENT_SCOPE_FOOTER,
-  declarationsExceedingEvidence,
+  gatesNotYetEstablished,
+  gatesEstablished,
   runAssessment,
   supportedLevel,
 } from "@/lib/engine/assessment-run";
@@ -125,7 +126,7 @@ section("4. S5 assessment run — CerviAI issues, RetinaScan is held");
 // ═════════════════════════════════════════════════════════════════════════
 
 const cervCard = buildCerviaiCardV1();
-const cerv = runAssessment({ declaration: CERVIAI_DECLARATION, evidence: CERVIAI_EVIDENCE, conditions: cervCard.conditions });
+const cerv = runAssessment({ evidence: CERVIAI_EVIDENCE, conditions: cervCard.conditions });
 eq("CerviAI maps 5 documents", cerv.documentsMapped, 5);
 eq("CerviAI evidence coverage is high", cerv.evidenceCoverage, "high");
 eq("CerviAI has no unsupported gates", cerv.unsupportedGates, []);
@@ -133,24 +134,24 @@ eq("CerviAI issues", cerv.outcome, "ISSUE");
 eq("…with the demonstration wording", cerv.outcomeLine, "demonstration assessment issued");
 
 const retinaCard = getCardV2("retinascan")!;
-const retina = runAssessment({ declaration: RETINASCAN_DECLARATION, evidence: RETINASCAN_EVIDENCE, conditions: retinaCard.card.conditions });
+const retina = runAssessment({ evidence: RETINASCAN_EVIDENCE, conditions: retinaCard.card.conditions });
 eq("RetinaScan routes to human review", retina.outcome, "UNDER_ASSESSMENT");
 ok("…named as a delay, not a denial", /delay, not a denial/.test(retina.outcomeLine));
 ok("…and there is no rejected state anywhere in the run",
   !JSON.stringify(retina).toLowerCase().includes("reject"));
 ok("RetinaScan names the gates with nothing to read", retina.unsupportedGates.length >= 3, retina.unsupportedGates.join(", "));
 
-// The loophole the end-to-end run exposed.
-const allYes = {
-  submissionId: "sub-x",
-  gateAnswers: Object.fromEntries(
-    ["G1","G2","G3","G4","G17","G5","G6","G7","G8","G9","G10","G11","G12","G13","G14","G15","G16"].map((g) => [g, 2 as const])
-  ),
-  clarificationAnswers: [],
-};
-const bare = runAssessment({ declaration: allYes, evidence: [CERVIAI_EVIDENCE[0]], conditions: [] });
-eq("all-yes plus one document does NOT issue a clean card", bare.outcome, "UNDER_ASSESSMENT");
-ok("…because trial-blocking gates were declared with nothing bound", bare.unsupportedGates.length >= 5);
+/**
+ * The loophole the end-to-end run exposed, now closed at the root rather than
+ * guarded. There is no declaration to say "yes" in any more — the derivation
+ * reads the gates, so a single attachment cannot produce a clean card however
+ * confidently the submission is filled in.
+ */
+const bare = runAssessment({ evidence: [CERVIAI_EVIDENCE[0]], conditions: [] });
+eq("one document does NOT issue a clean card", bare.outcome, "UNDER_ASSESSMENT");
+ok("…because trial-blocking gates have nothing bound", bare.unsupportedGates.length >= 5, bare.unsupportedGates.join(", "));
+ok("…and no assertion can change that — the run takes no declaration",
+  !("declaration" in ({ evidence: [], conditions: [] } as Parameters<typeof runAssessment>[0])));
 
 // ═════════════════════════════════════════════════════════════════════════
 section("5. No numeric indicator can reach S5");
@@ -183,64 +184,74 @@ section("6. S4 declaration screen");
 
 const submitSrc = strip(readFileSync("app/submit/page.tsx", "utf8"));
 ok("titled 'Innovator declaration'", submitSrc.includes("Innovator declaration"));
-ok("sub-line present", submitSrc.includes("ClearPath assesses these independently against your evidence in the next step"));
+// The sub-line changed with the screen: there are no "these" to assess any
+// more, because the vendor no longer answers anything here.
+ok("sub-line names what the screen is", submitSrc.includes("What you attached, and what it establishes"));
+ok("…and still says the assessment is independent", submitSrc.includes("ClearPath assesses this independently in the next step"));
 /**
  * Scoped to the DECLARATION step's own JSX. The start screen legitimately
  * describes the card as carrying a verdict — that is a different screen, and a
  * whole-file scan would force the wizard's opening copy to stop naming the
  * thing the card actually produces.
  */
-const declStart = submitSrc.indexOf("{step === 3 && (");
+const declStart = submitSrc.indexOf("{step === 4 && (");
 const declEnd = submitSrc.indexOf("{/* ── Step 2", declStart);
 const declarationScreen = submitSrc.slice(declStart, declEnd > 0 ? declEnd : undefined);
-ok("the declaration screen was located", declStart > 0 && declarationScreen.length > 500);
+ok("the declaration screen was located", declStart > 0 && declarationScreen.length > 200);
 ok("the word 'verdict' does not appear on the declaration screen", !/verdict/i.test(declarationScreen));
 ok("no per-dimension percentages remain", !/dimensionScores\.D[1-4]/.test(submitSrc));
-ok("'declaration completeness' band present", /Declaration completeness/i.test(submitSrc));
-ok("the band stays live (derived, not gated behind Generate)", submitSrc.includes("declarationsExceedingEvidence"));
 
 /**
- * THE LOAD-BEARING STRING. verify:browser matches the literal "3/17 answered"
- * as a substring of the page's innerText. Rendering the count as "17 of 17
- * answered" would break it. Asserted here so a later edit to this band cannot
- * take the browser suite down without this failing first.
+ * THE 17-QUESTION DECLARATION IS GONE.
+ *
+ * It made the card read as a calculator: a tool answering questions about
+ * itself, then a card assembled from those answers. What replaces it is a
+ * SUMMARY of what was attached and what it establishes — the vendor asserts
+ * nothing on this screen.
+ *
+ * "N/17 answered" was the load-bearing literal the site-wide browser suite
+ * matched on, and the counter it belonged to no longer exists. That suite now
+ * navigates by stepper label instead, so nothing depends on the string.
  */
-ok("the answered count renders as N/17, preserving the asserted literal",
-  submitSrc.includes("{answeredCount}/17 answered"));
-/**
- * The BODH panel and its "Pre-fill clinical + fairness gates" button were
- * REMOVED from this screen. The 17 questions stay, and they are answered by
- * hand — a pre-fill from a third-party model score was answering the
- * innovator's declaration on the innovator's behalf.
- */
+ok("no gate questionnaire remains in the wizard",
+  !submitSrc.includes("answeredCount") && !submitSrc.includes("/17 answered")
+    && !submitSrc.includes("GATE_OPTIONS") && !submitSrc.includes("Segmented"));
+ok("no 'declaration completeness' band — there is no declaration to complete",
+  !/Declaration completeness/i.test(submitSrc));
+ok("the declaration renders the summary component", submitSrc.includes("<DeclarationSummary"));
+ok("…which is derived live from the attachments, not gated behind Generate",
+  submitSrc.includes("evidenceForEngine"));
 ok("the BODH panel and its pre-fill button are gone from the declaration",
   !submitSrc.includes("BODH validation score") && !submitSrc.includes("Pre-fill clinical + fairness gates"));
 
-const gaps = declarationsExceedingEvidence(CERVIAI_DECLARATION, CERVIAI_EVIDENCE);
-ok("the exceeds count is derived, not hardcoded", gaps.every((g) => g.declared > g.supported));
-eq("supportedLevel(no documents) is 0", supportedLevel([]), 0);
-eq("supportedLevel(only non-transferring evidence) is 0", supportedLevel([validation]), 0);
+// Comments explain WHY the word is banned, so they must not trip the check.
+const stripComments = (src: string) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+const summarySrc = readFileSync("components/submit/DeclarationSummary.tsx", "utf8");
+ok("the summary shows both halves the brief asks for",
+  summarySrc.includes("What you attached") && summarySrc.includes("What we found"));
+ok("…and never the word 'verdict'", !/verdict/i.test(stripComments(summarySrc)));
 
 /**
- * FIVE, not the 2 an earlier draft stated. The spec was corrected to the
- * derived set once it was clear the two halves of the original could not both
- * hold: S3 binds the validation study to G1 AND G17, and that study's
- * non-transferability against a CHC / staff-nurse context is exactly what puts
- * G1 in the list — so any rule catching G1 through that document catches G17
- * through the same document.
+ * THE DERIVATION IS NOW DOC-VERSUS-GATE-REQUIREMENT.
  *
- *   G1, G17   NON_TRANSFERRING — every bound document was generated somewhere
- *             this deployment is not.
- *   G2, G3, G8  UNCORROBORATED — the clinical evaluation transfers, but it is
- *             vendor-generated and states no independent replication, against
- *             three gates declared system-owned.
+ * It used to compare a document against the level the vendor declared, which
+ * meant a submission that declared nothing had no gaps at all. It now compares
+ * against what the GATE requires — the same for every submission, and not
+ * something a submitter can set.
  *
- * Asserted as a SET rather than a count, so a rule change that happened to keep
- * the total at five while catching different gates does not slip through.
+ * Asserted as a SET rather than a count: a rule change that happened to keep
+ * the total while catching different gates must not slip through.
  */
-const gapGates = gaps.map((g) => g.gateId).sort();
-eq("declarations exceeding the evidence", gapGates, ["G1", "G17", "G2", "G3", "G8"].sort());
-eq("…which is five", gaps.length, 5);
+const gaps = gatesNotYetEstablished(CERVIAI_EVIDENCE);
+eq("supportedLevel(no documents) is 0", supportedLevel([]), 0);
+eq("supportedLevel(only non-transferring evidence) is 0", supportedLevel([validation]), 0);
+ok("the count is derived, not hardcoded", gaps.every((g) => g.supported < 2));
+
+const established = gatesEstablished(CERVIAI_EVIDENCE);
+eq("CerviAI's documents carry G4 and G14 on their own", established.sort(), ["G14", "G4"]);
+eq("…and the other fifteen gates are gaps", gaps.length, 17 - established.length);
+
 ok(
   "G1 and G17 are caught by the same non-transferring study",
   gaps.filter((g) => ["G1", "G17"].includes(g.gateId)).every((g) => g.kind === "NON_TRANSFERRING")
@@ -249,6 +260,17 @@ ok(
   "G2, G3 and G8 are caught as uncorroborated, not non-transferring",
   gaps.filter((g) => ["G2", "G3", "G8"].includes(g.gateId)).every((g) => g.kind === "UNCORROBORATED")
 );
+ok(
+  "gates with nothing bound are named as such",
+  gaps.filter((g) => ["G5", "G6", "G7"].includes(g.gateId)).every((g) => g.kind === "NO_EVIDENCE")
+);
+/**
+ * Only the BLOCKING no-evidence gates hold a submission. A gate outside the
+ * safety/legality/consent/data clusters with nothing on file leaves the card
+ * silent on it — it is reported, not a reason to stop.
+ */
+ok("blocking is a property of the cluster, not of the gap",
+  gaps.some((g) => g.blocking) && gaps.some((g) => !g.blocking));
 
 // ═════════════════════════════════════════════════════════════════════════
 section("7. Wizard structure");

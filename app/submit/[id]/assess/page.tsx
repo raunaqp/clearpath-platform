@@ -60,16 +60,9 @@ export default function AssessPage() {
       const v = await getCardV2(id);
       if (!live) return;
       if (!v) { setView(null); setNotFound(true); return; }
-      // One resolver for both a wizard-built submission and a seeded fixture,
-      // so this screen and the card cannot disagree about what was declared.
-      const declaration =
-        getRegisteredSubmission(id)?.declaration ??
-        seededDeclaration(id) ??
-        { submissionId: `sub-${id}`, gateAnswers: {}, clarificationAnswers: [] };
       setView(v);
       setRun(
         runAssessment({
-          declaration,
           evidence: v.evidence,
           conditions: v.card.conditions,
         })
@@ -83,11 +76,11 @@ export default function AssessPage() {
     return [
       { label: `Mapping ${run.documentsMapped} ${run.documentsMapped === 1 ? "document" : "documents"} to gates and items` },
       {
-        label: "Checking declaration against evidence",
+        label: "Checking each gate against what is on file",
         note:
-          run.discrepancies.length === 0
-            ? "no discrepancies"
-            : `${run.discrepancies.length} ${run.discrepancies.length === 1 ? "discrepancy" : "discrepancies"}`,
+          run.gateGaps.length === 0
+            ? "every gate established"
+            : `${run.gateGaps.length} ${run.gateGaps.length === 1 ? "gate" : "gates"} not yet established`,
       },
       { label: "Scoring against the 17 demo gates" },
     ];
@@ -171,23 +164,19 @@ export default function AssessPage() {
 
       {complete && (
         <>
-          {/* Qualitative indicators. No numbers, by construction. */}
-          <div className="grid gap-px overflow-hidden rounded-card border border-line bg-line sm:grid-cols-2">
-            <div className="bg-bg-card px-5 py-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-                Evidence coverage
-              </p>
-              <p className="mt-1 font-serif text-2xl capitalize text-ink">{run.evidenceCoverage}</p>
-            </div>
-            <div className="bg-bg-card px-5 py-4">
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-                Gates with no evidence behind them
-              </p>
-              <p className="mt-1 font-serif text-2xl text-ink">
-                {run.unsupportedGates.length === 0 ? "none" : run.unsupportedGates.join(", ")}
-              </p>
-              <p className="mt-1.5 text-sm text-muted">→ {run.outcomeLine}</p>
-            </div>
+          {/*
+            The unsupported-gates panel is GONE. It still drives routing —
+            `run.unsupportedGates` decides whether this holds — but the same
+            finding was being stated twice: once here, in a label nobody could
+            parse, and once on the declaration summary in plain words. The
+            summary is the one that survives.
+          */}
+          <div className="rounded-card border border-line bg-bg-card px-5 py-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+              Evidence coverage
+            </p>
+            <p className="mt-1 font-serif text-2xl capitalize text-ink">{run.evidenceCoverage}</p>
+            <p className="mt-1.5 text-sm text-muted">→ {run.outcomeLine}</p>
           </div>
 
           {held ? (

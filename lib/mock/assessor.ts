@@ -107,12 +107,12 @@ export function assessorQueue(): QueueEntry[] {
     const declaration = seededDeclaration(slug);
     if (!view || !declaration) continue;
     const evidence = applyBindings(view.evidence, getAnswers(slug));
-    const run = runAssessment({ declaration, evidence, conditions: view.card.conditions });
+    const run = runAssessment({ evidence, conditions: view.card.conditions });
     if (run.outcome !== "UNDER_ASSESSMENT") continue;
 
-    const trialBlocking = run.discrepancies
-      .filter((d) => d.kind === "UNEVIDENCED")
-      .map((d) => d.gateId)
+    const trialBlocking = run.gateGaps
+      .filter((g) => g.kind === "NO_EVIDENCE" && g.blocking)
+      .map((g) => g.gateId)
       .filter((g) => run.unsupportedGates.includes(g));
 
     entries.push({
@@ -137,7 +137,7 @@ export function itemsForReview(slug: string): ReviewedItem[] {
   const declaration = seededDeclaration(slug);
   if (!view || !declaration) return [];
   const evidence = applyBindings(view.evidence, getAnswers(slug));
-  const run = runAssessment({ declaration, evidence, conditions: view.card.conditions });
+  const run = runAssessment({ evidence, conditions: view.card.conditions });
   return run.unsupportedGates.map((gateId) => {
     const itemId = legacyGateToItemId(gateId) ?? gateId;
     return {
