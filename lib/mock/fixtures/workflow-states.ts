@@ -34,6 +34,44 @@ const REQ_BASE = {
  * so the hospital-side states downstream of them are reachable.
  */
 export const SEEDED_REQUESTS: Record<string, DeploymentRequest> = {
+  /**
+   * CerviAI's request, seeded so the charter and the trial screens are
+   * reachable without first clicking the whole handoff. Anything the innovator
+   * builds in-session still wins over this — see getDeploymentRequest.
+   */
+  cerviai: {
+    ...REQ_BASE,
+    id: "request-cerviai",
+    facilitationId: "facilitation-cerviai",
+    toolId: "tool-cerviai",
+    slug: "cerviai",
+    toolName: "CerviAI",
+    hospitalId: "hosp-northvale",
+    hospitalName: "Northvale Institute of Medical Sciences",
+    cardId: "CP-2026-0915-CERVIAI-001",
+    cardVersion: "v1.1",
+    problemRegisterEntryId: "pr-northvale-cervical-screening",
+    question:
+      "Does CerviAI-assisted VIA screening increase detection of referable abnormalities at CHC level without increasing nurse workload?",
+    scope: { sites: 4, siteType: "CHC", days: 90, participants: 1000, operatorCadre: "Staff nurse" },
+    conditionPlans: [
+      {
+        itemId: "D1.B.01",
+        gateId: "G1",
+        label: "India-population validation",
+        blocks: "ROUTINE_DEPLOYMENT",
+        plan: "This trial generates the India-population evidence.",
+        suppliedBy: "Innovator",
+        prerequisite: { description: "CTRI registration", dueBy: "Before day 1" },
+      },
+    ],
+    status: "UNDER_ASSESSMENT",
+    hospitalResponse: {
+      status: "UNDER_ASSESSMENT",
+      at: "2026-10-01T00:00:00.000Z",
+      note: "Advanced to audit.",
+    },
+  },
   /** DECLINED — the path 6a built and nothing ever travelled. */
   symptombot: {
     ...REQ_BASE,
