@@ -18,6 +18,7 @@ import { deriveEndpoints } from "@/lib/engine/charter";
 import { getProblemRegister } from "./fixtures/site-profiles";
 import { getDeploymentRequest } from "./handoff";
 import { getCardV2 } from "./cards-v2";
+import { appendOnlyGuard, inForce } from "./append-only";
 
 const VERDICT_KEY = "clearpath-verdicts-v1";
 
@@ -144,9 +145,7 @@ export function getVerdicts(slug: string): CommitteeVerdict[] {
 
 /** The verdict in force — the highest revision not itself superseded. */
 export function currentVerdict(slug: string): CommitteeVerdict | undefined {
-  const all = getVerdicts(slug);
-  const superseded = new Set(all.map((v) => v.supersedes).filter(Boolean));
-  return [...all].reverse().find((v) => !superseded.has(v.id));
+  return inForce(getVerdicts(slug));
 }
 
 export type RecordVerdictInput = Omit<CommitteeVerdict, "id" | "revision" | "supersedes"> & {
@@ -164,23 +163,19 @@ export type RecordVerdictInput = Omit<CommitteeVerdict, "id" | "revision" | "sup
  * its mind.
  */
 export function recordVerdict(input: RecordVerdictInput): CommitteeVerdict {
-  const existing = getVerdicts(input.slug);
-  const inForce = currentVerdict(input.slug);
+  // The SAME guard the assessor review uses. See lib/mock/append-only.ts — the
+  // two records share the mechanism, not the fields.
+  const { revision, supersedes } = appendOnlyGuard({
+    existing: getVerdicts(input.slug),
+    supersedes: input.supersedes,
+    label: "Verdict",
+    subject: input.slug,
+  });
 
-  if (inForce && !input.supersedes) {
-    throw new Error(
-      `Verdict: ${input.slug} already has a verdict in force (${inForce.id}). Verdicts are append-only — a reversal is a new verdict that says which it supersedes, never an edit.`
-    );
-  }
-  if (input.supersedes && !existing.some((v) => v.id === input.supersedes)) {
-    throw new Error(`Verdict: cannot supersede "${input.supersedes}" — no such verdict.`);
-  }
-
-  const revision = existing.length + 1;
   const verdict: CommitteeVerdict = {
     ...input,
     id: `verdict-${input.slug}-${revision}`,
-    supersedes: input.supersedes ?? null,
+    supersedes,
     revision,
   };
   const rows = allVerdicts();
