@@ -103,10 +103,14 @@ type Seed = {
   independence: Evidence["independence"];
   name: string;
   generatedBy: string;
+  /** Who paid. Distinct from who produced it — a funder is a conflict surface. */
+  fundedBy?: string;
   setting: string;
   cadre: string;
   sampleN: number | null;
   documentDate: string;
+  dateFrom?: string;
+  dateTo?: string;
   validUntil?: string | null;
   path?: string;
   /** One stated limitation. null only where the document type has none. */
@@ -128,13 +132,13 @@ function toEvidence(s: Seed): Evidence {
     ...(s.path ? { path: s.path } : {}),
     provenance: {
       generatedBy: s.generatedBy,
-      fundedBy: s.generatedBy,
+      fundedBy: s.fundedBy ?? s.generatedBy,
       population: {
         setting: s.setting,
         cadre: s.cadre,
         sampleN: s.sampleN,
-        dateFrom: s.documentDate,
-        dateTo: s.documentDate,
+        dateFrom: s.dateFrom ?? s.documentDate,
+        dateTo: s.dateTo ?? s.documentDate,
       },
       documentDate: s.documentDate,
       validUntil: s.validUntil ?? null,
@@ -234,6 +238,161 @@ const SEEDS: Seed[] = [
       "screening use.",
     path: "/sample-docs/cerviai-ethics-approval.pdf",
   },
+  /**
+   * ─────────────────────────────────────────────────────────────────────
+   * THE OPERATIONAL FILE
+   * ─────────────────────────────────────────────────────────────────────
+   * Everything above is what a vendor sends to prove the tool works. What
+   * follows is what a district sends back to prove it can be run — and it is
+   * the half a thin submission leaves out.
+   *
+   * Five documents covered eight of seventeen gates, for a Class C device
+   * about to see 1,000 women across four CHCs in 90 days. No hospital would
+   * accept that and no serious vendor would send it; it only looked complete
+   * because the engine was filling the rest in from the vendor's own answers.
+   *
+   * Each of these is produced or countersigned by the district, not by the
+   * vendor, because that is who holds the facts. And each states what it does
+   * not show — a field log that claims no limits is not more credible.
+   */
+  {
+    // Subgroup behaviour, NOT accuracy. Deliberately a different question from
+    // G1: without colposcopy-confirmed outcomes this cohort cannot establish
+    // how well the tool performs, only whether it performs DIFFERENTLY across
+    // groups. That is why G17 clears here and G1 stays open.
+    id: "ev-cerviai-subgroup",
+    itemRefs: [legacyGateToItemId("G17")!],
+    type: "AUDIT",
+    independence: "INDEPENDENT",
+    name: "Subgroup and device-variation analysis",
+    generatedBy: "Tamil Nadu State Health Society evaluation cell",
+    fundedBy: "State programme budget",
+    setting: "community health centre",
+    cadre: "staff nurse",
+    sampleN: 2400,
+    documentDate: "2026-07-18",
+    dateFrom: "2026-02-01",
+    dateTo: "2026-06-30",
+    limitation:
+      "Compares output rates across skin-tone band, age group and the four " +
+      "colposcope models in use. No colposcopy-confirmed outcomes were " +
+      "available, so it shows whether the tool behaves differently between " +
+      "groups — not how accurate it is in any of them.",
+  },
+  {
+    id: "ev-cerviai-field",
+    itemRefs: [
+      legacyGateToItemId("G2")!,
+      legacyGateToItemId("G3")!,
+      legacyGateToItemId("G5")!,
+      legacyGateToItemId("G8")!,
+      legacyGateToItemId("G9")!,
+      legacyGateToItemId("G11")!,
+    ],
+    type: "FIELD_LOG",
+    independence: "PARTNER_GENERATED",
+    name: "CHC field evaluation log",
+    generatedBy: "District Health Society, Coimbatore",
+    fundedBy: "State programme budget",
+    setting: "community health centre",
+    cadre: "staff nurse",
+    sampleN: 612,
+    documentDate: "2026-08-02",
+    dateFrom: "2026-05-12",
+    dateTo: "2026-07-25",
+    limitation:
+      "612 screenings across four CHCs over eleven weeks: 47 nurse overrides " +
+      "and how each was resolved, referral actions taken, and time per case " +
+      "against the pre-tool baseline. One district, camp-day volumes only.",
+  },
+  {
+    id: "ev-cerviai-conditions",
+    itemRefs: [legacyGateToItemId("G6")!],
+    type: "FIELD_LOG",
+    independence: "PARTNER_GENERATED",
+    name: "Site operating-conditions survey",
+    generatedBy: "District Health Society, Coimbatore",
+    fundedBy: "State programme budget",
+    setting: "community health centre",
+    cadre: "staff nurse",
+    sampleN: 4,
+    documentDate: "2026-06-14",
+    limitation:
+      "Power backup hours, mobile connectivity and colposcope availability " +
+      "recorded at each of the four CHCs. Surveyed in the dry season; " +
+      "monsoon connectivity is untested.",
+  },
+  {
+    id: "ev-cerviai-sla",
+    itemRefs: [legacyGateToItemId("G7")!, legacyGateToItemId("G12")!],
+    type: "SLA",
+    independence: "PARTNER_GENERATED",
+    name: "Service agreement and exit terms",
+    generatedBy: "District Health Society, Coimbatore",
+    fundedBy: "State programme budget",
+    setting: "community health centre",
+    cadre: "staff nurse",
+    sampleN: null,
+    documentDate: "2026-06-30",
+    validUntil: "2028-06-29",
+    limitation:
+      "Executed agreement: the district owns the images and the reads, data " +
+      "returned within 30 days of termination, replacement device within 72 " +
+      "hours. The replacement time is contractual and has not been tested in " +
+      "service.",
+  },
+  {
+    id: "ev-cerviai-export",
+    itemRefs: [legacyGateToItemId("G13")!],
+    type: "INTEGRATION_SPEC",
+    independence: "PARTNER_GENERATED",
+    name: "Data-flow diagram and export specification",
+    generatedBy: "State HMIS integration team",
+    fundedBy: "State programme budget",
+    setting: "community health centre",
+    cadre: "staff nurse",
+    sampleN: null,
+    documentDate: "2026-07-04",
+    limitation:
+      "Names every store the image and the read pass through, and specifies " +
+      "CSV and HL7 export on request. Verified against the state HMIS " +
+      "staging instance, not the live one.",
+  },
+  {
+    id: "ev-cerviai-training",
+    itemRefs: [legacyGateToItemId("G10")!],
+    type: "TRAINING_CURRICULUM",
+    independence: "PARTNER_GENERATED",
+    name: "Training curriculum and competency records",
+    generatedBy: "District Training Centre, Coimbatore",
+    fundedBy: "State programme budget",
+    setting: "community health centre",
+    cadre: "staff nurse",
+    sampleN: 24,
+    documentDate: "2026-05-08",
+    limitation:
+      "Six hours over two days for 24 staff nurses, with competency assessed " +
+      "at the end. Initial competency only — there is no re-test at three " +
+      "months, so retention is unknown.",
+  },
+  {
+    id: "ev-cerviai-pms",
+    itemRefs: [legacyGateToItemId("G16")!],
+    type: "INTEGRATION_SPEC",
+    independence: "PARTNER_GENERATED",
+    name: "Post-market surveillance plan and district dashboard",
+    generatedBy: "District Health Society, Coimbatore",
+    fundedBy: "State programme budget",
+    setting: "community health centre",
+    cadre: "staff nurse",
+    sampleN: null,
+    documentDate: "2026-08-11",
+    limitation:
+      "A read-only dashboard the district opens itself: throughput, positive " +
+      "rate and override rate, refreshed nightly and not routed through the " +
+      "vendor. Outcome linkage depends on the district cancer registry, " +
+      "which lags about six months.",
+  },
 ];
 
 export const CERVIAI_EVIDENCE: Evidence[] = evaluateAll(
@@ -278,7 +437,7 @@ export function cerviaiScoredSet(): ScoredSet {
   return {
     path: "PUBLIC",
     scores: new Map<string, ItemScore>(),
-    selfDeclaration: CERVIAI_DECLARATION,
+    evidence: CERVIAI_EVIDENCE,
   };
 }
 

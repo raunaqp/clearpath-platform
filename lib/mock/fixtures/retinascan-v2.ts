@@ -6,11 +6,18 @@
  * assessor, and it needs to be held for a REASON a vendor can act on: three of
  * its five open conditions have no document bound to them at all.
  *
- * Nothing here is a failure. RetinaScan declares nothing dishonestly and fails
- * no gate. It has simply told us three things are only partly in place and
- * given us nothing to read about any of them — which is exactly the situation
- * a person should look at, and exactly the situation a threshold should not
+ * Nothing here is a failure. RetinaScan fails no gate. Three gates simply have
+ * NOTHING ON FILE — fairness across subgroups, whether it runs in the site's
+ * real conditions, and whether data can be got back out — so the assessment
+ * cannot say either way about any of them. That is exactly the situation a
+ * person should look at, and exactly the situation a threshold should not
  * resolve on its own.
+ *
+ * It is also why the card reads TRIAL_ONLY rather than a conditional pass. An
+ * unestablished gate caps the verdict; it does not sink it. Before the
+ * declaration fallback was removed these three resolved from the vendor's own
+ * answers and the card read CONDITIONALLY_DEPLOYABLE — a conditional pass on
+ * three gates nobody had evidence for.
  */
 
 import type { Evidence } from "@/lib/schemas/evidence";
@@ -73,10 +80,14 @@ type Seed = {
   independence: Evidence["independence"];
   name: string;
   generatedBy: string;
+  /** Who paid. Distinct from who produced it — a funder is a conflict surface. */
+  fundedBy?: string;
   setting: string;
   cadre: string;
   sampleN: number | null;
   documentDate: string;
+  dateFrom?: string;
+  dateTo?: string;
   validUntil?: string | null;
   limitation: string | null;
   path?: string;
@@ -93,7 +104,7 @@ function toEvidence(s: Seed): Evidence {
     ...(s.path ? { path: s.path } : {}),
     provenance: {
       generatedBy: s.generatedBy,
-      fundedBy: s.generatedBy,
+      fundedBy: s.fundedBy ?? s.generatedBy,
       population: {
         setting: s.setting,
         cadre: s.cadre,
@@ -111,9 +122,13 @@ function toEvidence(s: Seed): Evidence {
 }
 
 /**
- * Three documents. Note what is NOT here: nothing bound to fairness (G17),
- * operability (G6) or export (G13) — the three gates RetinaScan itself declared
- * as only partly in place.
+ * Note what is NOT here: nothing bound to fairness (G17), operability (G6) or
+ * export (G13). Those three gates come back UNSCORED, and the assessment run
+ * holds the submission for an assessor on exactly that set.
+ *
+ * The rest is a normal operational file — a district that has actually run the
+ * thing. Without it the hole would have been ten gates wide and "held for
+ * three specific reasons" would have been a fiction.
  */
 const SEEDS: Seed[] = [
   {
@@ -179,6 +194,65 @@ const SEEDS: Seed[] = [
       "Describes the intended training. No competence data from operators who " +
       "have completed it.",
     path: "/sample-docs/retinascan-user-manual.pdf",
+  },
+  {
+    id: "ev-retinascan-field",
+    itemRefs: [
+      legacyGateToItemId("G5")!,
+      legacyGateToItemId("G8")!,
+      legacyGateToItemId("G9")!,
+      legacyGateToItemId("G11")!,
+    ],
+    type: "FIELD_LOG",
+    independence: "PARTNER_GENERATED",
+    name: "NP-NCD screening clinic field log",
+    generatedBy: "District Health Society, Nashik",
+    fundedBy: "State programme budget",
+    setting: "primary health centre",
+    cadre: "staff nurse",
+    sampleN: 880,
+    documentDate: "2026-07-22",
+    dateFrom: "2026-04-06",
+    dateTo: "2026-07-10",
+    limitation:
+      "880 screenings across five PHCs: referral actions taken on a flag, " +
+      "time per case against the pre-tool baseline, and how many patients " +
+      "reached ophthalmology. One district, one screening season.",
+  },
+  {
+    id: "ev-retinascan-sla",
+    itemRefs: [legacyGateToItemId("G7")!, legacyGateToItemId("G12")!],
+    type: "SLA",
+    independence: "PARTNER_GENERATED",
+    name: "Service agreement and exit terms",
+    generatedBy: "District Health Society, Nashik",
+    fundedBy: "State programme budget",
+    setting: "primary health centre",
+    cadre: "staff nurse",
+    sampleN: null,
+    documentDate: "2026-06-19",
+    validUntil: "2028-06-18",
+    limitation:
+      "Executed agreement: the district owns the fundus images and the reads, " +
+      "and data is returned within 30 days of termination. It says nothing " +
+      "about the FORMAT that data comes back in.",
+  },
+  {
+    id: "ev-retinascan-dashboard",
+    itemRefs: [legacyGateToItemId("G16")!],
+    type: "INTEGRATION_SPEC",
+    independence: "PARTNER_GENERATED",
+    name: "District performance dashboard specification",
+    generatedBy: "State HMIS integration team",
+    fundedBy: "State programme budget",
+    setting: "primary health centre",
+    cadre: "staff nurse",
+    sampleN: null,
+    documentDate: "2026-08-05",
+    limitation:
+      "A read-only view the district opens itself: screening volume, flag " +
+      "rate and referral completion. Not routed through the vendor. Referral " +
+      "outcomes depend on the ophthalmology unit reporting back.",
   },
 ];
 

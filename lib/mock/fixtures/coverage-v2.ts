@@ -45,8 +45,22 @@ type Seed = {
   type: Evidence["type"];
   independence: Evidence["independence"];
   name: string;
+  /** Who produced it. Not the same as who paid for it, and both are asked for. */
+  generatedBy: string;
+  fundedBy: string;
+  setting: string;
+  cadre: string;
+  sampleN: number | null;
   documentDate: string;
+  dateFrom?: string;
+  dateTo?: string;
   validUntil?: string | null;
+  /**
+   * What this document does NOT show. Every evidential document has one — a
+   * study, a log or an audit that claims no limits is not more credible, it is
+   * less. A licence or an executed contract can legitimately carry null: it is
+   * an instrument, not a finding, so there is nothing for it to fail to show.
+   */
   limitation: string | null;
 };
 
@@ -59,13 +73,22 @@ function ev(submissionId: string, s: Seed): Evidence {
     independence: s.independence,
     name: s.name,
     provenance: {
-      generatedBy: "Partner organisation",
-      fundedBy: "Programme budget",
-      population: { setting: "primary health centre", cadre: "staff nurse", sampleN: null, dateFrom: s.documentDate, dateTo: s.documentDate },
+      generatedBy: s.generatedBy,
+      fundedBy: s.fundedBy,
+      population: {
+        setting: s.setting,
+        cadre: s.cadre,
+        sampleN: s.sampleN,
+        dateFrom: s.dateFrom ?? s.documentDate,
+        dateTo: s.dateTo ?? s.documentDate,
+      },
       documentDate: s.documentDate,
       validUntil: s.validUntil ?? null,
     },
     limitation: s.limitation,
+    // Both are COMPUTED by evaluateAll against the declared context. Never
+    // authored here — a fixture that set its own generalisability would be
+    // asserting the answer to the question the engine exists to ask.
     generalisability: { limited: false, reason: null },
     expired: false,
   };
@@ -92,14 +115,111 @@ export const CHESTXR_DECLARATION: SelfDeclaration = {
   clarificationAnswers: [],
 };
 
+/**
+ * THE BEST-EVIDENCED SUBMISSION ON THE PLATFORM, and the reference for what
+ * "DEPLOYABLE" costs. Seven documents, every one of the 17 gates reached by at
+ * least one that transfers to a PHC / staff-nurse deployment and is not the
+ * claimant's own uncorroborated word.
+ *
+ * Note what that is NOT: it is not seven documents that claim everything is
+ * fine. Every evidential document here states what it does not show. A
+ * submission reaches DEPLOYABLE by covering the ground, not by being silent
+ * about its limits.
+ */
 export const CHESTXR_EVIDENCE: Evidence[] = evaluateAll(
   [
-    ev("sub-chestxr", { id: "ev-chestxr-validation", itemRefs: [G("G1"), G("G17")], type: "VALIDATION_STUDY", independence: "INDEPENDENT", name: "Multi-centre validation including Indian sites", documentDate: "2026-01-20", limitation: null }),
-    ev("sub-chestxr", { id: "ev-chestxr-cdsco", itemRefs: [G("G4")], type: "REGULATORY", independence: "INDEPENDENT", name: "CDSCO licence", documentDate: "2025-11-04", validUntil: "2028-11-04", limitation: null }),
-    ev("sub-chestxr", { id: "ev-chestxr-eval", itemRefs: [G("G2"), G("G3"), G("G8")], type: "STUDY", independence: "PARTNER_GENERATED", name: "Clinical evaluation report", documentDate: "2026-02-11", limitation: null }),
-    ev("sub-chestxr", { id: "ev-chestxr-dpdp", itemRefs: [G("G14"), G("G15")], type: "AUDIT", independence: "INDEPENDENT", name: "DPDP posture and residency audit", documentDate: "2026-03-02", limitation: null }),
-    ev("sub-chestxr", { id: "ev-chestxr-integration", itemRefs: [G("G12"), G("G13"), G("G16")], type: "INTEGRATION_SPEC", independence: "PARTNER_GENERATED", name: "Integration and export specification", documentDate: "2026-02-25", limitation: null }),
-    ev("sub-chestxr", { id: "ev-chestxr-field", itemRefs: [G("G5"), G("G6"), G("G7"), G("G9"), G("G10"), G("G11")], type: "FIELD_LOG", independence: "PARTNER_GENERATED", name: "PHC field evaluation", documentDate: "2026-04-08", limitation: null }),
+    ev("sub-chestxr", {
+      id: "ev-chestxr-validation",
+      itemRefs: [G("G1"), G("G17")],
+      type: "VALIDATION_STUDY", independence: "INDEPENDENT",
+      name: "Multi-centre validation including Indian sites",
+      generatedBy: "National TB Elimination Programme evaluation cell",
+      fundedBy: "Central TB Division",
+      setting: "primary health centre", cadre: "staff nurse", sampleN: 18400,
+      documentDate: "2026-01-20", dateFrom: "2024-11-01", dateTo: "2025-12-15",
+      limitation:
+        "Prospective across 22 PHCs in four states. Chest radiographs only — " +
+        "it says nothing about performance on the portable units two of the " +
+        "deploying districts use.",
+    }),
+    ev("sub-chestxr", {
+      id: "ev-chestxr-cdsco",
+      itemRefs: [G("G4")],
+      type: "REGULATORY", independence: "INDEPENDENT",
+      name: "CDSCO licence — Class B",
+      generatedBy: "CDSCO", fundedBy: "Not applicable",
+      setting: "primary health centre", cadre: "staff nurse", sampleN: null,
+      documentDate: "2025-11-04", validUntil: "2028-11-04",
+      // An instrument, not a finding. See the note on Seed.limitation.
+      limitation: null,
+    }),
+    ev("sub-chestxr", {
+      id: "ev-chestxr-eval",
+      itemRefs: [G("G2"), G("G3"), G("G8")],
+      type: "STUDY", independence: "PARTNER_GENERATED",
+      name: "Clinical evaluation and override audit",
+      generatedBy: "State TB Cell, Tamil Nadu",
+      fundedBy: "State programme budget",
+      setting: "primary health centre", cadre: "staff nurse", sampleN: 3100,
+      documentDate: "2026-02-11", dateFrom: "2025-08-01", dateTo: "2026-01-31",
+      limitation:
+        "Records 214 clinician overrides and how each was resolved. Six months " +
+        "of use; it does not cover what happens when a reader is new to the tool.",
+    }),
+    ev("sub-chestxr", {
+      id: "ev-chestxr-dpdp",
+      itemRefs: [G("G14"), G("G15")],
+      type: "AUDIT", independence: "INDEPENDENT",
+      name: "DPDP posture and residency audit",
+      generatedBy: "Cert-In empanelled auditor",
+      fundedBy: "ChestXR Diagnostics",
+      setting: "primary health centre", cadre: "staff nurse", sampleN: null,
+      documentDate: "2026-03-02", validUntil: "2027-03-02",
+      limitation:
+        "Confirms in-country storage and the consent notice served at " +
+        "registration. Audited the configuration as at March 2026, not a " +
+        "continuing control.",
+    }),
+    ev("sub-chestxr", {
+      id: "ev-chestxr-integration",
+      itemRefs: [G("G12"), G("G13"), G("G16")],
+      type: "INTEGRATION_SPEC", independence: "PARTNER_GENERATED",
+      name: "Integration, export and live-performance specification",
+      generatedBy: "State HMIS integration team",
+      fundedBy: "State programme budget",
+      setting: "primary health centre", cadre: "staff nurse", sampleN: null,
+      documentDate: "2026-02-25",
+      limitation:
+        "FHIR export and a read-only performance dashboard the district can " +
+        "open itself. Verified against the state HMIS staging instance.",
+    }),
+    ev("sub-chestxr", {
+      id: "ev-chestxr-field",
+      itemRefs: [G("G5"), G("G6"), G("G9"), G("G11")],
+      type: "FIELD_LOG", independence: "PARTNER_GENERATED",
+      name: "PHC field evaluation — conditions and workload",
+      generatedBy: "District Health Society, Salem",
+      fundedBy: "State programme budget",
+      setting: "primary health centre", cadre: "staff nurse", sampleN: 640,
+      documentDate: "2026-04-08", dateFrom: "2026-01-06", dateTo: "2026-03-28",
+      limitation:
+        "Twelve weeks across six PHCs: power, connectivity, device uptime and " +
+        "time-per-read against the pre-tool baseline. One district, one season.",
+    }),
+    ev("sub-chestxr", {
+      id: "ev-chestxr-service",
+      itemRefs: [G("G7"), G("G10")],
+      type: "SLA", independence: "PARTNER_GENERATED",
+      name: "Service agreement and training record",
+      generatedBy: "District Health Society, Salem",
+      fundedBy: "State programme budget",
+      setting: "primary health centre", cadre: "staff nurse", sampleN: 38,
+      documentDate: "2026-03-18", validUntil: "2027-03-17",
+      limitation:
+        "Executed agreement: 30-day data return on exit, 72-hour hardware " +
+        "replacement, and 4 hours of training with competency signed off for " +
+        "38 staff nurses. Replacement times are contractual, not yet observed.",
+    }),
   ],
   CHESTXR_CONTEXT,
   new Date(AT)
@@ -135,10 +255,98 @@ export const OVARESERVE_DECLARATION: SelfDeclaration = {
   clarificationAnswers: [],
 };
 
+/**
+ * Sixteen gates carried by document; G16 reached by nothing at all.
+ *
+ * That single hole is the whole fixture. TRIAL_ONLY comes from a gate NOBODY
+ * COULD ESTABLISH, not from one that failed — `fail` stays at zero and
+ * `unscored` is one. A tool can be well evidenced everywhere a reader looks
+ * and still cap at a trial because of the one place nobody looked.
+ *
+ * G16 is "can the site see live performance independent of vendor reports?"
+ * and there is genuinely nothing a vendor at this stage could file for it: the
+ * clinic has no read-only instance, so the honest state is silence. Inventing
+ * a dashboard specification here would be inventing a document that does not
+ * exist.
+ */
 export const OVARESERVE_EVIDENCE: Evidence[] = evaluateAll(
   [
-    ev("sub-ovareserve", { id: "ev-ovareserve-validation", itemRefs: [G("G1"), G("G17")], type: "VALIDATION_STUDY", independence: "INDEPENDENT", name: "External cohort validation", documentDate: "2026-01-15", limitation: "Local calibration still pending." }),
-    ev("sub-ovareserve", { id: "ev-ovareserve-manual", itemRefs: [G("G2"), G("G3"), G("G10")], type: "TRAINING_CURRICULUM", independence: "VENDOR_GENERATED", name: "Clinician user manual", documentDate: "2026-02-02", limitation: "Describes intended use; no competence data." }),
+    ev("sub-ovareserve", {
+      id: "ev-ovareserve-validation",
+      itemRefs: [G("G1"), G("G17")],
+      type: "VALIDATION_STUDY", independence: "INDEPENDENT",
+      name: "External cohort validation with subgroup breakdown",
+      generatedBy: "Reproductive medicine research network",
+      fundedBy: "Institutional research grant",
+      setting: "private secondary hospital", cadre: "clinician", sampleN: 2870,
+      documentDate: "2026-01-15", dateFrom: "2024-06-01", dateTo: "2025-11-30",
+      limitation:
+        "Three private fertility units, stratified by age band and BMI. " +
+        "Local calibration to this clinic's assay platform is still pending.",
+    }),
+    ev("sub-ovareserve", {
+      id: "ev-ovareserve-cdsco",
+      itemRefs: [G("G4")],
+      type: "REGULATORY", independence: "INDEPENDENT",
+      name: "CDSCO licence — Class B",
+      generatedBy: "CDSCO", fundedBy: "Not applicable",
+      setting: "private secondary hospital", cadre: "clinician", sampleN: null,
+      documentDate: "2025-08-12", validUntil: "2028-08-12",
+      limitation: null,
+    }),
+    ev("sub-ovareserve", {
+      id: "ev-ovareserve-eval",
+      itemRefs: [G("G2"), G("G3"), G("G8"), G("G9"), G("G11")],
+      type: "STUDY", independence: "PARTNER_GENERATED",
+      name: "Clinical evaluation and consultation-time study",
+      generatedBy: "Lakeview Fertility Centre clinical audit team",
+      fundedBy: "Lakeview Fertility Centre",
+      setting: "private secondary hospital", cadre: "clinician", sampleN: 410,
+      documentDate: "2026-03-04", dateFrom: "2025-10-01", dateTo: "2026-02-20",
+      limitation:
+        "Records how the estimate was used in 410 consultations and the " +
+        "override pathway when a clinician disagreed. Single site.",
+    }),
+    ev("sub-ovareserve", {
+      id: "ev-ovareserve-training",
+      itemRefs: [G("G10")],
+      type: "TRAINING_CURRICULUM", independence: "PARTNER_GENERATED",
+      name: "Clinician onboarding and competency record",
+      generatedBy: "Lakeview Fertility Centre",
+      fundedBy: "Lakeview Fertility Centre",
+      setting: "private secondary hospital", cadre: "clinician", sampleN: 9,
+      documentDate: "2026-02-02",
+      limitation:
+        "Two hours, nine clinicians, competency signed off at the end of the " +
+        "session. No retention re-test.",
+    }),
+    ev("sub-ovareserve", {
+      id: "ev-ovareserve-dpdp",
+      itemRefs: [G("G14"), G("G15")],
+      type: "AUDIT", independence: "INDEPENDENT",
+      name: "DPDP consent and residency review",
+      generatedBy: "Cert-In empanelled auditor",
+      fundedBy: "OvaReserve Diagnostics",
+      setting: "private secondary hospital", cadre: "clinician", sampleN: null,
+      documentDate: "2026-02-26", validUntil: "2027-02-26",
+      limitation:
+        "Hormone panels held in-country; consent taken at the fertility " +
+        "workup. Reviewed the configuration as at February 2026.",
+    }),
+    ev("sub-ovareserve", {
+      id: "ev-ovareserve-service",
+      itemRefs: [G("G5"), G("G6"), G("G7"), G("G12"), G("G13")],
+      type: "SLA", independence: "PARTNER_GENERATED",
+      name: "Service agreement, exit terms and export specification",
+      generatedBy: "Lakeview Fertility Centre procurement",
+      fundedBy: "Lakeview Fertility Centre",
+      setting: "private secondary hospital", cadre: "clinician", sampleN: null,
+      documentDate: "2026-03-11", validUntil: "2028-03-10",
+      limitation:
+        "Executed agreement: the clinic owns its panels, CSV and HL7 export " +
+        "on request, 30-day data return on exit. Terms are contractual and " +
+        "have not yet been exercised.",
+    }),
   ],
   OVARESERVE_CONTEXT,
   new Date(AT)
@@ -179,10 +387,62 @@ export const SYMPTOMBOT_DECLARATION: SelfDeclaration = {
   clarificationAnswers: [],
 };
 
+/**
+ * THE THIN SUBMISSION, and now thin for a checkable reason.
+ *
+ * Three documents. One of them — the CDSCO registration the whole regulatory
+ * position rests on — HAS LAPSED, which puts G4 at zero, and a gate at zero
+ * forces NOT_DEPLOYABLE_IN_CONTEXT whatever surrounds it. Expiry is the only
+ * route to zero from documents, and it is the right one: "you had a licence
+ * and it ran out" is an assessed finding, where "you sent us nothing" is an
+ * absence.
+ *
+ * Everything else is silence. Nine gates have no document bound to them at
+ * all, so the card reports them as gates it could not establish rather than
+ * as failures — including consent (G14) for a patient-facing triage chat,
+ * which is the gap a hospital would notice first.
+ */
 export const SYMPTOMBOT_EVIDENCE: Evidence[] = evaluateAll(
   [
-    ev("sub-symptombot", { id: "ev-symptombot-eval", itemRefs: [G("G2"), G("G8")], type: "STUDY", independence: "VENDOR_GENERATED", name: "Internal evaluation", documentDate: "2026-01-09", limitation: "Internal only — not an independent study." }),
-    ev("sub-symptombot", { id: "ev-symptombot-dpdp", itemRefs: [G("G15")], type: "AUDIT", independence: "VENDOR_GENERATED", name: "DPDP privacy policy", documentDate: "2026-02-14", limitation: "Consent basis for patient-initiated use is not established." }),
+    ev("sub-symptombot", {
+      id: "ev-symptombot-cdsco",
+      itemRefs: [G("G4")],
+      type: "REGULATORY", independence: "INDEPENDENT",
+      name: "CDSCO registration — lapsed",
+      generatedBy: "CDSCO", fundedBy: "Not applicable",
+      setting: "primary health centre", cadre: "patient", sampleN: null,
+      documentDate: "2023-06-01",
+      // LAPSED. computeExpiry marks it against the issue date, and a card
+      // cannot rest on a document whose own validity ran out.
+      validUntil: "2025-06-01",
+      limitation: null,
+    }),
+    ev("sub-symptombot", {
+      id: "ev-symptombot-eval",
+      itemRefs: [G("G2"), G("G8")],
+      type: "STUDY", independence: "VENDOR_GENERATED",
+      name: "Internal evaluation",
+      generatedBy: "SymptomBot Health",
+      fundedBy: "SymptomBot Health",
+      setting: "primary health centre", cadre: "patient", sampleN: 900,
+      documentDate: "2026-01-09", dateFrom: "2025-09-01", dateTo: "2025-12-20",
+      limitation:
+        "900 simulated conversations scored by the vendor's own clinicians. " +
+        "No real patients and no independent replication.",
+    }),
+    ev("sub-symptombot", {
+      id: "ev-symptombot-dpdp",
+      itemRefs: [G("G15")],
+      type: "AUDIT", independence: "VENDOR_GENERATED",
+      name: "DPDP privacy policy",
+      generatedBy: "SymptomBot Health",
+      fundedBy: "SymptomBot Health",
+      setting: "primary health centre", cadre: "patient", sampleN: null,
+      documentDate: "2026-02-14",
+      limitation:
+        "States where conversation logs are stored. The consent basis for " +
+        "patient-initiated use is not established anywhere on file.",
+    }),
   ],
   SYMPTOMBOT_CONTEXT,
   new Date(AT)
@@ -208,24 +468,85 @@ export const EMBRYOGRADE_DECLARATION: SelfDeclaration = {
   clarificationAnswers: [],
 };
 
+/**
+ * The evidence edge cases, kept because each one is a state the engine has to
+ * survive and nothing else in the fixtures reaches: a co-authored validation,
+ * an EXPIRED licence, and a document filed against nothing at all.
+ */
 export const EMBRYOGRADE_EVIDENCE: Evidence[] = evaluateAll(
   [
-    ev("sub-embryograde", { id: "ev-embryograde-validation", itemRefs: [G("G1"), G("G17")], type: "VALIDATION_STUDY", independence: "PARTNER_GENERATED", name: "Multi-centre IVF validation", documentDate: "2025-09-30", limitation: "Co-authored with the trial site." }),
+    ev("sub-embryograde", {
+      id: "ev-embryograde-validation",
+      itemRefs: [G("G1"), G("G17")],
+      type: "VALIDATION_STUDY", independence: "PARTNER_GENERATED",
+      name: "Multi-centre IVF validation",
+      generatedBy: "IVF research consortium",
+      fundedBy: "EmbryoGrade AI",
+      setting: "private tertiary hospital", cadre: "specialist", sampleN: 5200,
+      documentDate: "2025-09-30", dateFrom: "2023-04-01", dateTo: "2025-06-30",
+      limitation:
+        "Co-authored with the trial site, and the vendor funded it. The " +
+        "conflict is declared on the submission rather than left to be found.",
+    }),
     /**
      * EXPIRED. The licence was real and has lapsed. `computeExpiry` marks it,
      * and a card cannot rest on a document whose own validity ran out — which
      * is a different finding from never having had one.
      */
-    ev("sub-embryograde", { id: "ev-embryograde-cdsco", itemRefs: [G("G4")], type: "REGULATORY", independence: "INDEPENDENT", name: "CDSCO licence — Class C", documentDate: "2024-03-01", validUntil: "2026-03-01", limitation: null }),
+    ev("sub-embryograde", {
+      id: "ev-embryograde-cdsco",
+      itemRefs: [G("G4")],
+      type: "REGULATORY", independence: "INDEPENDENT",
+      name: "CDSCO licence — Class C",
+      generatedBy: "CDSCO", fundedBy: "Not applicable",
+      setting: "private tertiary hospital", cadre: "specialist", sampleN: null,
+      documentDate: "2024-03-01", validUntil: "2026-03-01",
+      limitation: null,
+    }),
     /**
      * UNBOUND. Filed, openable, and pointing at nothing — so it counts for
      * nothing, everywhere. The rule has been enforced since Phase 1 and could
      * not be shown until the schema stopped forbidding the state the upload
      * screen could already produce.
      */
-    ev("sub-embryograde", { id: "ev-embryograde-unbound", itemRefs: [], type: "STUDY", independence: "VENDOR_GENERATED", name: "Time-lapse imaging white paper", documentDate: "2026-04-19", limitation: "General background; not offered against any specific item." }),
-    ev("sub-embryograde", { id: "ev-embryograde-eval", itemRefs: [G("G2"), G("G3"), G("G8"), G("G14"), G("G15")], type: "STUDY", independence: "PARTNER_GENERATED", name: "Clinical evaluation report", documentDate: "2026-05-06", limitation: null }),
-    ev("sub-embryograde", { id: "ev-embryograde-integration", itemRefs: [G("G12"), G("G13"), G("G16"), G("G5"), G("G6"), G("G7"), G("G9"), G("G10"), G("G11")], type: "INTEGRATION_SPEC", independence: "VENDOR_GENERATED", name: "Integration and operations pack", documentDate: "2026-05-20", limitation: null }),
+    ev("sub-embryograde", {
+      id: "ev-embryograde-unbound",
+      itemRefs: [],
+      type: "STUDY", independence: "VENDOR_GENERATED",
+      name: "Time-lapse imaging white paper",
+      generatedBy: "EmbryoGrade AI",
+      fundedBy: "EmbryoGrade AI",
+      setting: "private tertiary hospital", cadre: "specialist", sampleN: null,
+      documentDate: "2026-04-19",
+      limitation: "General background; not offered against any specific item.",
+    }),
+    ev("sub-embryograde", {
+      id: "ev-embryograde-eval",
+      itemRefs: [G("G2"), G("G3"), G("G8"), G("G9"), G("G11"), G("G14"), G("G15")],
+      type: "STUDY", independence: "PARTNER_GENERATED",
+      name: "Clinical evaluation, consent and data-handling report",
+      generatedBy: "Embryology quality committee, partner network",
+      fundedBy: "Partner network",
+      setting: "private tertiary hospital", cadre: "specialist", sampleN: 1180,
+      documentDate: "2026-05-06", dateFrom: "2025-07-01", dateTo: "2026-04-15",
+      limitation:
+        "Ranking advisory throughout; the embryologist selects. Covers consent " +
+        "at the treatment cycle and where images are held. One network.",
+    }),
+    ev("sub-embryograde", {
+      id: "ev-embryograde-integration",
+      itemRefs: [G("G5"), G("G6"), G("G7"), G("G10"), G("G12"), G("G13"), G("G16")],
+      type: "INTEGRATION_SPEC", independence: "PARTNER_GENERATED",
+      name: "Integration and operations pack",
+      generatedBy: "Partner network IT",
+      fundedBy: "Partner network",
+      setting: "private tertiary hospital", cadre: "specialist", sampleN: null,
+      documentDate: "2026-05-20",
+      limitation:
+        "Covers image export, exit terms, incubator compatibility and the " +
+        "unit's own performance view. Written against the network's current " +
+        "incubator estate.",
+    }),
   ],
   EMBRYOGRADE_CONTEXT,
   new Date("2026-09-15T00:00:00.000Z")

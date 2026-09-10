@@ -42,34 +42,64 @@ section("1. Ranking — blocking first, then answerability");
 const cerv = questionsFor("cerviai", CERVIAI_DECLARATION, CERVIAI_EVIDENCE);
 eq("CerviAI already clears, so nothing is blocking", cerv.run.outcome, "ISSUE");
 /**
- * The five changed when the derivation did, and the change is the point.
+ * TWO QUESTIONS, NOT FIVE — and that is the change worth having.
  *
- * WAS ["G17","G1","G2","G3","G8"] — only gates the vendor had DECLARED were
- * candidates, so a gate they said nothing about could never be asked about.
- * NOW every gate is a candidate, because the comparison is against what the
- * gate requires. G15 enters on that basis and displaces G8 on the tie-break.
+ * WAS ["G1","G17","G15","G2","G3"]: CerviAI had fifteen gaps because thirteen
+ * of its seventeen gates had no document behind them and only looked settled
+ * because the engine resolved them from the vendor's own declared answers.
+ * The five questions were the top of a list that should not have been that
+ * long.
  *
- * The RULES are unchanged: gate items first, then gap size, then gate id for
- * stability. G1 and G17 lead on the largest gap (their only bound study does
- * not transfer to this context); G15, G2 and G3 follow at one level short.
+ * NOW the submission carries the operational file a district would actually
+ * hold, so fifteen of seventeen gates are established by document and exactly
+ * two are open. It gets asked about exactly those two. The cap is a ceiling,
+ * never a quota — a submission with two real gaps is not padded to five.
  */
-eq("its five are the gates furthest from what they require",
-  cerv.questions.map((q) => q.gateId), ["G1", "G17", "G15", "G2", "G3"]);
-ok("capped at five even though more discrepancies exist",
-  cerv.questions.length === MAX_CLARIFYING_QUESTIONS && cerv.discrepancies.length > 5,
+eq("its questions are its two open gates, and nothing else",
+  cerv.questions.map((q) => q.gateId), ["G1", "G15"]);
+ok("the cap is a ceiling, not a quota", cerv.questions.length === cerv.discrepancies.length,
   `${cerv.questions.length} of ${cerv.discrepancies.length}`);
+
+/** The cap has to bind SOMEWHERE, or it is not a cap. SymptomBot is where. */
+const symptom = questionsFor("symptombot", CERVIAI_DECLARATION, getCardV2("symptombot")!.evidence);
+ok("capped at five even though far more gaps exist",
+  symptom.questions.length === MAX_CLARIFYING_QUESTIONS && symptom.discrepancies.length > 5,
+  `${symptom.questions.length} of ${symptom.discrepancies.length}`);
 
 const retina = questionsFor("retinascan", RETINASCAN_DECLARATION, RETINASCAN_EVIDENCE);
 eq("RetinaScan is held", retina.run.outcome, "UNDER_ASSESSMENT");
+eq("…on the three gates with nothing on file", retina.run.unsupportedGates.sort(), ["G13", "G17", "G6"]);
 ok("its questions lead with the gates that are BLOCKING it",
   retina.run.unsupportedGates.every((g) => retina.questions.slice(0, 3).some((q) => q.gateId === g)),
   retina.questions.map((q) => q.gateId).join(", "));
-ok("a gate with nothing on file ranks BELOW one with a document that falls short — on a clear submission",
-  cerv.discrepancies.find((d) => d.gateId === "G17")!.materiality >
-  cerv.discrepancies.find((d) => d.gateId === "G10")!.materiality);
-ok("…and ABOVE it when it is the thing blocking",
+ok("a gate with nothing on file ranks ABOVE a merely imperfect one when it is blocking",
   retina.discrepancies.find((d) => d.gateId === "G13")!.materiality >
   retina.discrepancies.find((d) => d.gateId === "G1")!.materiality);
+
+/**
+ * ANSWERABILITY — the -20 for "nothing on file", asserted where it is still
+ * OBSERVABLE.
+ *
+ * The rule is unchanged and the reason for it is unchanged: "you sent us
+ * nothing" produces "we will send something", which resolves nothing and burns
+ * one of five slots, while a gap against a document that exists can be closed
+ * by pointing at section 4.
+ *
+ * What changed is that it is now DOMINATED whenever the caller passes the
+ * run's full unsupported set, because every gate with nothing on file is in
+ * that set and +50 for blocking outweighs -20. So it is asserted here on the
+ * ranking with no blocking set supplied, which is the shape an assessor
+ * console asking about one dimension would use — and the only shape where the
+ * two terms are separable.
+ */
+const unranked = findDiscrepancies({
+  scores: new Map(), evidence: getCardV2("symptombot")!.evidence, path: "PUBLIC",
+  supportsFromEvidence: res(getCardV2("symptombot")!.evidence),
+});
+ok("…and BELOW it when nothing is blocking, so answerability decides",
+  unranked.find((d) => d.gateId === "G3")!.materiality <
+  unranked.find((d) => d.gateId === "G2")!.materiality,
+  `G3(nothing on file)=${unranked.find((d) => d.gateId === "G3")!.materiality} vs G2(doc falls short)=${unranked.find((d) => d.gateId === "G2")!.materiality}`);
 
 // ═════════════════════════════════════════════════════════════════════════
 section("2. An answer binds, it does not invent");
@@ -102,7 +132,15 @@ section("3. RetinaScan completes end to end");
 resetClarifications();
 const before = buildClarifyState("retinascan")!;
 eq("held before answering", before.run.outcome, "UNDER_ASSESSMENT");
-eq("coverage moderate", before.run.evidenceCoverage, "moderate");
+/**
+ * HIGH, not moderate. Coverage counts the DECISIVE gates that have something
+ * to read — the open conditions plus everything trial-blocking. RetinaScan now
+ * carries the operational file a district would hold, so its only decisive
+ * hole is G17; the other two (G6, G13) hold the submission but are not
+ * trial-blocking. A submission can be well covered and still be held, and that
+ * is the distinction this number exists to keep.
+ */
+eq("coverage high — the holes are specific, not broad", before.run.evidenceCoverage, "high");
 eq("three unsupported gates", before.run.unsupportedGates, ["G17", "G6", "G13"]);
 ok("five questions raised", before.questions.length === 5);
 ok("every question carries the document a truthful answer points at",

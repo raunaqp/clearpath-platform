@@ -18,6 +18,7 @@ import {
   runAssessment,
   supportedLevel,
 } from "@/lib/engine/assessment-run";
+import { legacyGateToItemId } from "@/lib/engine/item-bank";
 import { computeGeneralisability } from "@/lib/engine/evidence";
 import { canBeAssessed } from "@/lib/schemas/context";
 import { getCardV2 } from "@/lib/mock/cards-v2";
@@ -86,7 +87,20 @@ console.log(`  ↳ CerviAI covers ${cov.requiredCovered} of ${cov.requiredTotal}
 section("3. Evidence provenance and generalisability at attach time");
 // ═════════════════════════════════════════════════════════════════════════
 
-eq("five seeded CerviAI documents", CERVIAI_EVIDENCE.length, 5);
+/**
+ * TWELVE, not five. Five documents reached eight of seventeen gates for a
+ * Class C device about to screen 1,000 women across four CHCs — the rest only
+ * looked settled because the engine resolved them from the vendor's own
+ * declared answers. Seven more carry the operational half: field logs, the
+ * conditions survey, the service agreement, the export specification, the
+ * training record and the surveillance plan, each produced or countersigned by
+ * the district rather than the vendor.
+ */
+eq("twelve seeded CerviAI documents", CERVIAI_EVIDENCE.length, 12);
+ok("…and every one states a limitation or is an instrument that has none",
+  CERVIAI_EVIDENCE.every((e) => e.limitation !== null || e.type === "REGULATORY" || e.type === "SLA"));
+ok("…with a funder recorded separately from the producer",
+  CERVIAI_EVIDENCE.every((e) => e.provenance.fundedBy.length > 0));
 ok("every document carries full provenance", CERVIAI_EVIDENCE.every((e) =>
   e.provenance.generatedBy && e.provenance.fundedBy && e.provenance.documentDate &&
   e.provenance.population.setting && e.provenance.population.cadre));
@@ -127,7 +141,7 @@ section("4. S5 assessment run — CerviAI issues, RetinaScan is held");
 
 const cervCard = buildCerviaiCardV1();
 const cerv = runAssessment({ evidence: CERVIAI_EVIDENCE, conditions: cervCard.conditions });
-eq("CerviAI maps 5 documents", cerv.documentsMapped, 5);
+eq("CerviAI maps 12 documents", cerv.documentsMapped, 12);
 eq("CerviAI evidence coverage is high", cerv.evidenceCoverage, "high");
 eq("CerviAI has no unsupported gates", cerv.unsupportedGates, []);
 eq("CerviAI issues", cerv.outcome, "ISSUE");
@@ -248,9 +262,24 @@ eq("supportedLevel(no documents) is 0", supportedLevel([]), 0);
 eq("supportedLevel(only non-transferring evidence) is 0", supportedLevel([validation]), 0);
 ok("the count is derived, not hardcoded", gaps.every((g) => g.supported < 2));
 
+/**
+ * FIFTEEN of seventeen gates established BY DOCUMENT, and the two that are not
+ * are the two the card carries as conditions: G1 (no independent validation
+ * that transfers to a CHC / staff-nurse context) and G15 (a residency
+ * arrangement stated in the vendor's own policy and not audited).
+ *
+ * This is the whole point of removing the declaration fallback. The same
+ * fifteen used to "pass" — resolved from the vendor's answers to a
+ * questionnaire — and the card said 15 of 17 while the screen before it said
+ * fifteen gates the documents did not establish. Same number, opposite
+ * meaning. Now they are the same fact.
+ */
 const established = gatesEstablished(CERVIAI_EVIDENCE);
-eq("CerviAI's documents carry G4 and G14 on their own", established.sort(), ["G14", "G4"]);
-eq("…and the other fifteen gates are gaps", gaps.length, 17 - established.length);
+eq("CerviAI's documents establish fifteen gates", established.length, 15);
+eq("…and the two that remain are G1 and G15", gaps.map((g) => g.gateId).sort(), ["G1", "G15"]);
+eq("…which are exactly the card's two conditions",
+  cervCard.conditions.map((c) => c.itemId).sort(),
+  [legacyGateToItemId("G1")!, legacyGateToItemId("G15")!].sort());
 
 ok(
   "G1 and G17 are caught by the same non-transferring study",
