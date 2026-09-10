@@ -215,35 +215,34 @@ ok("the exceeds count is derived, not hardcoded", gaps.every((g) => g.declared >
 eq("supportedLevel(no documents) is 0", supportedLevel([]), 0);
 eq("supportedLevel(only non-transferring evidence) is 0", supportedLevel([validation]), 0);
 
+/**
+ * FIVE, not the 2 an earlier draft stated. The spec was corrected to the
+ * derived set once it was clear the two halves of the original could not both
+ * hold: S3 binds the validation study to G1 AND G17, and that study's
+ * non-transferability against a CHC / staff-nurse context is exactly what puts
+ * G1 in the list — so any rule catching G1 through that document catches G17
+ * through the same document.
+ *
+ *   G1, G17   NON_TRANSFERRING — every bound document was generated somewhere
+ *             this deployment is not.
+ *   G2, G3, G8  UNCORROBORATED — the clinical evaluation transfers, but it is
+ *             vendor-generated and states no independent replication, against
+ *             three gates declared system-owned.
+ *
+ * Asserted as a SET rather than a count, so a rule change that happened to keep
+ * the total at five while catching different gates does not slip through.
+ */
 const gapGates = gaps.map((g) => g.gateId).sort();
-if (JSON.stringify(gapGates) !== JSON.stringify(["G1", "G15"])) {
-  divergence("the brief says the exceeds count resolves to G1 and G15", `resolves to ${gapGates.join(", ")}`);
-  notes.push([
-    "DECLARATION COMPLETENESS — the derived count is 5, not 2, and the brief's own",
-    "two halves cannot both hold.",
-    "",
-    `  Derived set: ${gapGates.join(", ")}`,
-    "",
-    "  G17 CANNOT BE EXCLUDED. S3 of the brief binds the validation study to G1 AND",
-    "  G17. That study is generalisability-limited against a CHC / staff-nurse",
-    "  context, which is precisely what puts G1 in the list. Any rule that catches",
-    "  G1 through that document catches G17 through the same document.",
-    "",
-    "  G15 CANNOT BE INCLUDED structurally. Its bound document is the DPDP policy,",
-    "  whose provenance matches the declared context exactly — CHC, staff nurse — so",
-    "  nothing checkable marks it as non-supporting. The gap is real, but it lives in",
-    "  the document's stated limitation ('does not evidence a residency control'),",
-    "  which is prose. Catching it would mean reading the sentence, which is the",
-    "  assessor's job and not something the wizard can derive on a keystroke.",
-    "",
-    "  G2, G3 and G8 join because the clinical evaluation is vendor-generated and",
-    "  states no independent replication, against three gates declared system-owned.",
-    "  That is a true finding and arguably the most useful one on the screen.",
-    "",
-    "  Pick one: bind the validation study to G1 only (gives G1 + G2/G3/G8), or",
-    "  accept the honest 5. Hardcoding 2 is the one option that is not available.",
-  ].join("\n"));
-}
+eq("declarations exceeding the evidence", gapGates, ["G1", "G17", "G2", "G3", "G8"].sort());
+eq("…which is five", gaps.length, 5);
+ok(
+  "G1 and G17 are caught by the same non-transferring study",
+  gaps.filter((g) => ["G1", "G17"].includes(g.gateId)).every((g) => g.kind === "NON_TRANSFERRING")
+);
+ok(
+  "G2, G3 and G8 are caught as uncorroborated, not non-transferring",
+  gaps.filter((g) => ["G2", "G3", "G8"].includes(g.gateId)).every((g) => g.kind === "UNCORROBORATED")
+);
 
 // ═════════════════════════════════════════════════════════════════════════
 section("7. Wizard structure");

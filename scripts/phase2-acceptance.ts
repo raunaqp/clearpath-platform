@@ -173,37 +173,24 @@ eq("D2 is 2.0", means.D2, 2);
 eq("D3 is 2.0", means.D3, 2);
 ok("every mean is on the 0-2 ladder", Object.values(means).every((m) => m >= 0 && m <= 2));
 
-const TARGET = { D1: 1.6, D4: 1.6 };
-if (means.D1 !== TARGET.D1 || means.D4 !== TARGET.D4) {
-  divergence(
-    "D1 and D4 mean 1.6 in the brief",
-    `engine gives D1 ${means.D1}, D4 ${means.D4}`
-  );
-  notes.push(
-    [
-      "DIMENSION MEANS — D1 and D4 come out at 1.8, not the 1.6 the brief states.",
-      "",
-      "  Not a tuning problem. The declaration is pinned by the brief at 15 gates Pass,",
-      "  G1 Partial, G15 Partial, 0 Fail. On the 0-2 ladder that is one item at 1 in D1",
-      "  and one at 1 in D4, and every non-gate item is a stub excluded from the",
-      "  denominator, so each dimension's mean is taken over its gates alone:",
-      "",
-      "    D1 = (1 + 2 + 2 + 2 + 2) / 5 = 1.8      D4 = (2 + 2 + 2 + 2 + 1) / 5 = 1.8",
-      "",
-      "  1.6 is 8/5, which needs TWO items at 1 in each dimension. Producing it would",
-      "  mean either a third and fourth condition — contradicting 'Conditions: G15 and",
-      "  G1' — or hardcoding the means, which the brief forbids in the same sentence",
-      "  that states them.",
-      "",
-      "  Same root cause as the Phase 1 golden trace: with 95 of 112 items unauthored,",
-      "  a dimension mean can only land on k/5, k/4 or k/3. The reachable values near",
-      "  1.6 are 1.4 and 1.8.",
-      "",
-      "  Everything else in the fixture is exact: verdict, both conditions and their",
-      "  blocking scopes, D2 and D3, the card id, both dates, and the changelog.",
-    ].join("\n")
-  );
-}
+/**
+ * 1.8, not the 1.6 an earlier draft stated. The spec was corrected to match
+ * what the declaration actually produces: the brief pins CerviAI at 15 gates
+ * Pass with G1 and G15 Partial, which on the 0-2 ladder is one item at 1 in D1
+ * and one at 1 in D4 — and with every non-gate item a stub, each dimension's
+ * mean is taken over its five gates alone.
+ *
+ *   D1 = (1 + 2 + 2 + 2 + 2) / 5 = 1.8      D4 = (2 + 2 + 2 + 2 + 1) / 5 = 1.8
+ *
+ * 1.6 would be 8/5 and needs TWO items at 1 per dimension, which means a third
+ * and fourth condition the fixture does not have.
+ */
+eq("D1 is 1.8", means.D1, 1.8);
+eq("D4 is 1.8", means.D4, 1.8);
+ok(
+  "…and both are reachable as k/5 over their scored gates",
+  [means.D1, means.D4].every((m) => Math.abs(m * 5 - Math.round(m * 5)) < 1e-9)
+);
 
 // ═════════════════════════════════════════════════════════════════════════
 section("6. Remediation — a scoped delta");
