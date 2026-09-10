@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowUpRight, ArrowLeft } from "lucide-react";
-import { useRole } from "@/lib/role/RoleContext";
+import { type Role, useRole } from "@/lib/role/RoleContext";
 import { LoginAsSelector } from "./LoginAsSelector";
 import { HospitalPersonaSwitcher } from "./HospitalPersonaSwitcher";
 import { HOSPITAL_STORAGE_KEY } from "@/lib/hospital/HospitalContext";
@@ -36,7 +36,7 @@ const PUBLIC_NAV: NavItem[] = [
   { href: "/framework", label: "Framework" },
 ];
 
-const NAV: Record<"vendor" | "hospital", NavItem[]> = {
+const NAV: Record<Role, NavItem[]> = {
   vendor: [
     { href: "/", label: "Home" },
     { href: "/applications", label: "My applications" },
@@ -49,6 +49,23 @@ const NAV: Record<"vendor" | "hospital", NavItem[]> = {
     { href: "/", label: "Home" },
     { href: "/hospital", label: "Inbox" },
     { href: "/site-readiness", label: "Site readiness" },
+    { href: "/registry", label: "Registry" },
+    { href: "/framework", label: "Framework" },
+  ],
+  /**
+   * ClearPath's own nav. Facilitation is the governance firewall and it had no
+   * role to be viewed from — which quietly implied it was the innovator's
+   * screen, when the whole point is that it is not.
+   */
+  clearpath: [
+    { href: "/", label: "Home" },
+    { href: "/submit/cerviai/facilitation", label: "Facilitation" },
+    { href: "/registry", label: "Registry" },
+    { href: "/framework", label: "Framework" },
+  ],
+  assessor: [
+    { href: "/", label: "Home" },
+    { href: "/assessor", label: "Assessor console" },
     { href: "/registry", label: "Registry" },
     { href: "/framework", label: "Framework" },
   ],

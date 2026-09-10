@@ -14,7 +14,19 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-export type Role = "vendor" | "hospital";
+/**
+ * Four actors. ClearPath and Assessor were missing, which misrepresented whose
+ * screens the facilitation and the exception queue belong to — S11 has existed
+ * since Phase 5 with no role to view it from.
+ *
+ * "vendor" keeps its storage value rather than being renamed to "innovator":
+ * it is persisted in localStorage and read directly by the browser suite, and
+ * a rename would be a data migration for a label change. The DISPLAY name is
+ * Innovator.
+ */
+export type Role = "vendor" | "hospital" | "clearpath" | "assessor";
+
+export const ALL_ROLES: Role[] = ["vendor", "clearpath", "hospital", "assessor"];
 
 const STORAGE_KEY = "clearpath-role";
 const SIGNED_IN_KEY = "clearpath-signed-in";
@@ -39,7 +51,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   // Hydrate from localStorage after mount (avoids SSR/client mismatch).
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved === "vendor" || saved === "hospital") setRoleState(saved);
+    if (saved && (ALL_ROLES as string[]).includes(saved)) setRoleState(saved as Role);
     if (window.localStorage.getItem(SIGNED_IN_KEY) === "true") setSignedIn(true);
   }, []);
 

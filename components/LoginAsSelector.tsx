@@ -23,9 +23,24 @@ import { cn } from "@/lib/utils";
  * separate regulatory product, styled as an exit so it doesn't read as an
  * in-app persona.
  */
+/**
+ * The four actors.
+ *
+ * The hints for Hospital and Vendor are LOAD-BEARING STRINGS: the browser suite
+ * selects menu items by them ("Evaluate, place & run clinical AI" and "Get your
+ * tool evaluated"). They are unchanged, and any edit to them breaks nav
+ * re-scoping assertions rather than anything visible.
+ *
+ * `vendor` keeps its storage value and shows as Innovator; ClearPath and
+ * Assessor are new. S11 facilitation has existed since Phase 5 with no role to
+ * view it from, which quietly implied the governance firewall was the
+ * innovator's screen.
+ */
 const ROLES: { role: Role; label: string; hint: string }[] = [
+  { role: "vendor", label: "Innovator", hint: "Get your tool evaluated & deployed" },
+  { role: "clearpath", label: "ClearPath", hint: "Validate fit and coordinate the introduction" },
   { role: "hospital", label: "Hospital", hint: "Evaluate, place & run clinical AI" },
-  { role: "vendor", label: "Vendor / startup", hint: "Get your tool evaluated & deployed" },
+  { role: "assessor", label: "Assessor", hint: "Review what the automated pass could not support" },
 ];
 
 export function LoginAsSelector({ mode = "switch" }: { mode?: "login" | "switch" }) {
@@ -118,6 +133,16 @@ export function LoginAsSelector({ mode = "switch" }: { mode?: "login" | "switch"
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-ink">{r.label}</span>
                   <span className="block text-xs text-muted">{r.hint}</span>
+                  {/*
+                    Nested beneath Hospital, not a second widget. The persona
+                    control itself stays in the nav — one place to change who
+                    you are and what you are looking at.
+                  */}
+                  {r.role === "hospital" && active && (
+                    <span className="mt-1 block text-[11px] leading-relaxed text-teal-deep">
+                      Site and scenario switch in the nav, beside this menu.
+                    </span>
+                  )}
                 </span>
               </button>
             );

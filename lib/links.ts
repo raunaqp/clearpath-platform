@@ -1,3 +1,4 @@
+import type { Role } from "@/lib/role/RoleContext";
 /**
  * External regulatory product (a separate app). ClearPath only ever LINKS to it
  * — never proxies or absorbs it. Every use opens a new tab with rel=noopener.
@@ -23,7 +24,9 @@ export const PUBLIC_ROUTES = ["/", "/about", "/framework", "/research"] as const
  * product, not its marketing door (`/hospitals`, `/vendors` stay reachable but
  * are no longer the entry point).
  */
-export const PRODUCT_HOME: Record<"vendor" | "hospital", string> = {
+export const PRODUCT_HOME: Record<Role, string> = {
   hospital: "/hospital",
+  clearpath: "/submit/cerviai/facilitation",
+  assessor: "/assessor",
   vendor: "/applications",
 };
