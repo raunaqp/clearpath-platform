@@ -148,7 +148,11 @@ export default function SubmissionDetail() {
               view.card.gateSummary.unscored,
           }}
           auditVerdict={audit?.verdict ?? null}
-          auditScore={audit?.score ?? null}
+          auditGates={
+            audit
+              ? { pass: audit.tally.pass, conditional: audit.tally.conditional, total: audit.tally.total }
+              : null
+          }
           auditor={hospital?.name ?? "Our hospital"}
           pending={!audit}
         />

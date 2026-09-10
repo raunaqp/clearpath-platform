@@ -27,6 +27,7 @@ import { getBodhScore, bodhToGateAnswers, type BodhScore } from "@/lib/mock/fixt
 import { Segmented } from "@/components/wizard/Segmented";
 import { DocViewer } from "@/components/DocViewer";
 import { cn } from "@/lib/utils";
+import { useHydrated } from "@/lib/use-hydrated";
 
 /** Docs that belong to a given seed tool (the wizard's candidate evidence). */
 function docsForTool(toolId: string): Document[] {
@@ -127,6 +128,14 @@ const EXAMPLE_EVIDENCE: Record<string, DraftDoc[]> = {
 
 export default function SubmitWizard() {
   const router = useRouter();
+  /**
+   * The start screen is the FIRST thing a visitor touches, on a cold load,
+   * before anything has been fetched — so it is the one place in the app where
+   * a click can land in the gap between paint and hydration and be silently
+   * swallowed. Every control here waits for hydration rather than looking ready
+   * and doing nothing.
+   */
+  const hydrated = useHydrated();
   const [step, setStep] = useState(0); // 0 = start; 1..4 = the numbered steps
   const [form, setForm] = useState<FormState>(EMPTY);
   const [answers, setAnswers] = useState<Partial<Record<ToolGateId, GateStatus>>>({});
@@ -282,9 +291,11 @@ export default function SubmitWizard() {
         </div>
         <button
           onClick={() => setStep(1)}
-          className="inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90"
+          disabled={!hydrated}
+          aria-busy={!hydrated}
+          className="inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-60"
         >
-          Begin <ArrowRight className="h-4 w-4" />
+          {hydrated ? "Begin" : "Loading…"} <ArrowRight className="h-4 w-4" />
         </button>
 
         <div className="rounded-card border border-line bg-bg-card p-5">
@@ -297,7 +308,9 @@ export default function SubmitWizard() {
               <button
                 key={ex.key}
                 onClick={() => loadExample(ex)}
-                className="rounded-card border border-line bg-bg px-3 py-3 text-left transition-colors hover:border-teal-deep/40"
+                disabled={!hydrated}
+                aria-busy={!hydrated}
+                className="rounded-card border border-line bg-bg px-3 py-3 text-left transition-colors hover:border-teal-deep/40 disabled:opacity-60"
               >
                 <p className="text-sm text-ink">{ex.label}</p>
                 <p className="mt-0.5 text-xs text-muted">{ex.hint}</p>

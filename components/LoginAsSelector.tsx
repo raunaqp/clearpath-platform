@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, LogIn, ArrowUpRight } from "lucide-react";
 import { useRole, type Role } from "@/lib/role/RoleContext";
@@ -31,6 +32,11 @@ export function LoginAsSelector({ mode = "switch" }: { mode?: "login" | "switch"
   const { role, setRole, signIn } = useRole();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  /**
+   * For most visitors this is the first control they touch, and it sits in the
+   * nav on every route — so it paints before hydration on every cold load.
+   */
+  const hydrated = useHydrated();
   const ref = useRef<HTMLDivElement>(null);
   const current = ROLES.find((r) => r.role === role);
 
@@ -57,6 +63,8 @@ export function LoginAsSelector({ mode = "switch" }: { mode?: "login" | "switch"
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
+        disabled={!hydrated}
+        aria-busy={!hydrated}
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(

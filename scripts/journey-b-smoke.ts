@@ -4,7 +4,7 @@
  * Proves the "run our own audit" flow through the real engine/api:
  *   - the 13-gate intake pre-fills 9 gates from the vendor card and leaves the
  *     4 hospital-only gates (integration, liability, named owners, billing) blank
- *   - the hospital's audit is an INDEPENDENT verdict (its own gate set + score)
+ *   - the hospital's audit is an INDEPENDENT verdict (its own gate set, tallied not averaged)
  *   - saving persists it against the submission
  */
 
@@ -38,7 +38,7 @@ async function main() {
   // Hospital answers the 4 hospital-only gates → independent verdict.
   const answers = { ...seed, H7: "pass", H9: "partial", H10: "pass", H12: "partial" } as const;
   const live = runHospitalAudit({ id: "preview", submissionId: sub.id, auditor: "Northvale Institute of Medical Sciences", gateAnswers: answers, createdAt: "" });
-  check("hospital audit produces its own verdict", !!live.verdict, `${live.verdict} · ${live.score}/100`);
+  check("hospital audit produces its own verdict", !!live.verdict, `${live.verdict} · ${live.tally.pass} pass · ${live.tally.conditional} conditional`);
   check("independent of the vendor: 13 gates vs 16", live.gateResults.length === 13);
   console.log(`    vendor card verdict: ${card.verdict} (${card.overallScore}/100 · 16 gates)`);
 

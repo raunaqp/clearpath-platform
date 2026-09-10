@@ -216,7 +216,7 @@ export default function AuditPage() {
             : 17,
         }}
         auditVerdict={live.verdict}
-        auditScore={live.score}
+        auditGates={{ pass: live.tally.pass, conditional: live.tally.conditional, total: live.tally.total }}
         auditor={auditor}
       />
 
@@ -278,7 +278,7 @@ export default function AuditPage() {
             <span className="text-ink">
               {live.verdict === "NOTYET" ? "Not yet" : live.verdict === "CONDITIONS" ? "Deploy with conditions" : "Deploy"}
             </span>{" "}
-            · {live.score}/100
+            · {live.tally.pass} pass · {live.tally.conditional} conditional
           </p>
         </div>
         <textarea

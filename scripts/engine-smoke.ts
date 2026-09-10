@@ -135,7 +135,7 @@ const audit = runHospitalAudit({
   createdAt: "2026-01-15T00:00:00.000Z",
 });
 check("CerviAI audit verdict", audit.verdict, "CONDITIONS");
-console.log(`    score: ${audit.score}`);
+console.log(`    ${audit.tally.pass} pass · ${audit.tally.conditional} conditional of ${audit.tally.total}`);
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

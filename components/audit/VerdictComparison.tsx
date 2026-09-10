@@ -82,7 +82,7 @@ export function VerdictComparison({
   vendorVerdict,
   vendorGates,
   auditVerdict,
-  auditScore,
+  auditGates,
   auditor,
   pending,
 }: {
@@ -95,7 +95,12 @@ export function VerdictComparison({
    */
   vendorGates: { pass: number; total: number };
   auditVerdict: AuditVerdict | null;
-  auditScore: number | null;
+  /**
+   * A tally, not a composite. The vendor panel already refused to reduce its
+   * verdict to a figure; this one doing so on the same screen was the sharpest
+   * contradiction in the product.
+   */
+  auditGates: { pass: number; conditional: number; total: number } | null;
   auditor: string;
   pending?: boolean;
 }) {
@@ -117,8 +122,12 @@ export function VerdictComparison({
         eyebrow="Our intake audit"
         sub={auditor}
         verdict={auditVerdict}
-        score={auditScore}
-        scoreLabel="13 intake gates · incl. liability + billing"
+        score={null}
+        scoreLabel={
+          auditGates
+            ? `${auditGates.pass} pass · ${auditGates.conditional} conditional · ${auditGates.total} intake gates`
+            : "13 intake gates · incl. liability + billing"
+        }
         ours
         pending={pending}
       />

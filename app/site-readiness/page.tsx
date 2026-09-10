@@ -11,6 +11,7 @@ import { SiteReadinessPanel } from "@/components/site/SiteReadinessPanel";
 import { useHospital } from "@/lib/hospital/HospitalContext";
 import { getHospital, getSiteListingByHospital, submitSiteToRegistry } from "@/lib/mock/api";
 import { cn } from "@/lib/utils";
+import { useHydrated } from "@/lib/use-hydrated";
 
 /**
  * Site-readiness self-assessment — persona-aware (Mode A). It prefills the
@@ -33,6 +34,9 @@ function listingHeadline(grade: string, profileLabel: string, openGaps: number):
 }
 
 export default function SiteReadinessPage() {
+  // First-paint interactive: this page renders its controls with no data
+  // gate, so a click before hydration would be swallowed.
+  const hydrated = useHydrated();
   const { hospitalId } = useHospital();
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [siteName, setSiteName] = useState("");
@@ -115,6 +119,7 @@ export default function SiteReadinessPage() {
             <button
               key={hp.value}
               onClick={() => setProfile(hp.value)}
+              disabled={!hydrated}
               className={cn(
                 "rounded-md border px-3 py-1.5 text-sm transition-colors",
                 profile === hp.value ? "border-teal-deep bg-teal-light text-teal-deep" : "border-line text-ink-2 hover:bg-bg-sink"
@@ -147,14 +152,14 @@ export default function SiteReadinessPage() {
             <Link href="/registry" className="inline-flex items-center gap-1 text-sm text-teal-deep">
               View on registry <ArrowRight className="h-3.5 w-3.5" />
             </Link>
-            <button onClick={submit} disabled={submitting} className="text-xs text-muted underline underline-offset-2 hover:text-ink-2 disabled:opacity-60">
+            <button onClick={submit} disabled={submitting || !hydrated} className="text-xs text-muted underline underline-offset-2 hover:text-ink-2 disabled:opacity-60">
               {submitting ? "Updating…" : "Update listing"}
             </button>
           </div>
         ) : (
           <button
             onClick={submit}
-            disabled={submitting}
+            disabled={submitting || !hydrated}
             className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-teal-deep px-3.5 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             <Upload className="h-4 w-4" /> {submitting ? "Submitting…" : "Submit readiness to the registry"}

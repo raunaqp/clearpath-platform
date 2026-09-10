@@ -7,14 +7,14 @@
  * Can we run? / Who owns it?", including the liability + billing gates a vendor
  * card doesn't cover. Same verdict rule as the tool engine:
  *   any fail → NOTYET · else any partial → CONDITIONS · else DEPLOY
- * Score = mean gate value × 100, rounded.
+ * The result carries a TALLY of findings, never a composite score.
  *
  * This is the neutrality point: the hospital's audit is theirs, computed
  * independently of the vendor's Readiness Card — even though it can be
  * PRE-FILLED from the vendor card where gates overlap (`prefillFromToolCard`).
  */
 
-import { GATE_VALUE, type GateResult, type GateStatus } from "@/lib/schemas/gate";
+import type { GateResult, GateStatus } from "@/lib/schemas/gate";
 import type { AuditResult, AuditVerdict } from "@/lib/schemas/audit";
 import type { ToolReadinessCard } from "@/lib/schemas/readiness-card";
 import {
@@ -79,14 +79,23 @@ export function runHospitalAudit(input: HospitalAuditInput): AuditResult {
 
   const verdict = deriveAuditVerdict(gateResults);
 
-  const total = gateResults.reduce((sum, r) => sum + GATE_VALUE[r.status], 0);
-  const score = Math.round((total / gateResults.length) * 100);
+  /**
+   * A tally, not a mean. See the note on `tally` in the schema: averaging
+   * thirteen gates that are not on a common scale invents a scale.
+   */
+  const tally = {
+    pass: gateResults.filter((r) => r.status === "pass" && r.answered !== false).length,
+    conditional: gateResults.filter((r) => r.status === "partial").length,
+    notMet: gateResults.filter((r) => r.status === "fail" && r.answered !== false).length,
+    unanswered: gateResults.filter((r) => r.answered === false).length,
+    total: gateResults.length,
+  };
 
   const result: AuditResult = {
     id: input.id,
     submissionId: input.submissionId,
     verdict,
-    score,
+    tally,
     gateResults,
     auditor: input.auditor,
     createdAt: input.createdAt,

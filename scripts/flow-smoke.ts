@@ -54,7 +54,7 @@ async function main() {
       H7: "pass", H8: "pass", H9: "partial", H10: "pass", H11: "pass", H12: "pass", H13: "pass",
     },
   });
-  check("B · audit produced", audit.verdict === "CONDITIONS", `score ${audit.score}`);
+  check("B · audit produced", audit.verdict === "CONDITIONS", `${audit.tally.pass} pass · ${audit.tally.conditional} conditional`);
 
   // C · approve (audit complete) → deployment created, then start pilot → ongoing
   await api.setDecision({ submissionId: submission.id, decision: "approved", reason: "demo approve" });
