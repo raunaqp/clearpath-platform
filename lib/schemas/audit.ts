@@ -4,7 +4,7 @@ import { GateResultSchema } from "./gate";
 /**
  * Audit Result — the hospital's OWN intake verdict (BUILD_SPEC §4, §7).
  *
- * Produced by `runHospitalAudit()` from the 13-gate private-hospital intake
+ * Produced by `runHospitalAudit()` from the 14-gate private-hospital intake
  * checklist. Deliberately independent of the vendor's Readiness Card — this is
  * the neutrality point: the hospital's audit is theirs, not the vendor's
  * marketing. Same verdict rule as the tool engine, so the enum is reused in

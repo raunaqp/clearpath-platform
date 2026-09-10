@@ -10,6 +10,8 @@ import { TOOL_GATE_ANSWERS } from "@/lib/mock/fixtures/gate-answers";
  */
 export type WizardExample = {
   key: string;
+  /** The seeded card this example already has. Lets the button land on it. */
+  slug: string;
   label: string;
   hint: string;
   /** The build being assessed. The card header renders it. */
@@ -30,6 +32,7 @@ function build(toolId: string, hint: string): WizardExample {
   const vendor = VENDORS.find((v) => v.id === tool.vendorId)!;
   return {
     key: toolId,
+    slug: tool.slug,
     label: tool.name,
     hint,
     ...EXAMPLE_VERSIONS[toolId],

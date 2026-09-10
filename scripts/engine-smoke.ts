@@ -8,6 +8,7 @@
 import { runToolAssessment } from "@/lib/engine/readiness-tool";
 import { runSiteAssessment } from "@/lib/engine/readiness-site";
 import { runHospitalAudit, prefillFromToolCard } from "@/lib/engine/hospital-audit";
+import { HOSPITAL_GATE_ORDER } from "@/lib/engine/gates";
 import { TOOLS } from "@/lib/mock/fixtures/tools";
 import { TOOL_GATE_ANSWERS } from "@/lib/mock/fixtures/gate-answers";
 
@@ -119,7 +120,7 @@ const cerviCard = runToolAssessment({
   createdAt: "2026-01-15T00:00:00.000Z",
 });
 const seeded = prefillFromToolCard(cerviCard);
-console.log(`    seeded ${Object.keys(seeded).length} of 13 gates from the vendor card`);
+console.log(`    seeded ${Object.keys(seeded).length} of ${HOSPITAL_GATE_ORDER.length} gates from the vendor card`);
 // Hospital answers the remaining hospital-only gates; leave H9 (liability) as a gap.
 const audit = runHospitalAudit({
   id: "audit-1",

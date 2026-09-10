@@ -49,7 +49,7 @@ export default function AuditPage() {
   const [tool, setTool] = useState<Tool | null>(null);
   const [card, setCard] = useState<ToolReadinessCard | null>(null);
   // The v2 card, for the vendor side of the comparison. The audit itself is
-  // still the hospital's own 13-gate engine and is untouched.
+  // still the hospital's own 14-gate engine and is untouched.
   const [cardV2, setCardV2] = useState<CardV2View | null>(null);
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [docs, setDocs] = useState<Document[]>([]);

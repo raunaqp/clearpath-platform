@@ -431,10 +431,19 @@ export const CLARIFICATION_DECLARATION: SelfDeclaration = {
  */
 export const CLARIFICATION_ANSWERED: SelfDeclaration = {
   ...CLARIFICATION_DECLARATION,
+  /**
+   * ANSWERS FOLLOW THE QUESTIONS, not the other way round.
+   *
+   * These are keyed to the five the ranking actually asks. When the -20
+   * answerability penalty was removed the ranking changed, and answers to
+   * questions nobody asks lift nothing — G3 and G6 dropped out, G11 and G12
+   * came in. Leaving the old keys in place would have made the recompute look
+   * weaker than it is for a reason that has nothing to do with the evidence.
+   */
   clarificationAnswers: [
     { questionId: "q-G1", answer: "Section 4 of the attached study is the independent arm, run by the district health society rather than by us.", answeredAt: ASSESSMENT_DATE },
-    { questionId: "q-G3", answer: "Manual pp. 22-24 describes the confirm-or-override step; the field log rows flagged 'OVR' are it happening.", answeredAt: ASSESSMENT_DATE },
-    { questionId: "q-G6", answer: "The single demonstration day was the acceptance test. Camp days 3-17 in the field log are unsupervised.", answeredAt: ASSESSMENT_DATE },
+    { questionId: "q-G11", answer: "The field log's week-3 onward rows are nurses choosing to run it before the camp queue builds; nobody asked them to.", answeredAt: ASSESSMENT_DATE },
+    { questionId: "q-G12", answer: "Clause 7 of the service agreement: images and reads are the district's, and we hold them as processor only.", answeredAt: ASSESSMENT_DATE },
     { questionId: "q-G13", answer: "Integration spec appendix B is the export path; it was mislabelled as import in the contents page.", answeredAt: ASSESSMENT_DATE },
     { questionId: "q-G14", answer: "The consent artefact covers screening generally; the antenatal-specific wording is in the annexure.", answeredAt: ASSESSMENT_DATE },
   ],

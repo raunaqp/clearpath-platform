@@ -308,7 +308,22 @@ eq("before answering: HUMAN_REVIEW", beforeRoute.decision, "HUMAN_REVIEW");
 const recomputed = applyClarificationAnswers(clar.scores, CLARIFICATION_ANSWERED, questions);
 const after = computeRouteInputs({ scores: recomputed, evidence: clar.evidence, path: "PUBLIC" });
 const afterRoute = route(after);
-ok("after answering: confidence ~0.74", Math.abs(after.meanConfidence - 0.74) < 0.005, after.meanConfidence.toFixed(3));
+/**
+ * 0.709, WAS 0.742 — and the mechanism is what this asserts, not the number.
+ *
+ * Removing the -20 answerability penalty reordered the five: G3 and G6 left,
+ * G11 and G12 arrived. `applyClarificationAnswers` raises the confidence of an
+ * AI score, so answering an item the AI never scored lifts nothing — G11 and
+ * G12 are two such, where G3 and G6 were not. Three items lift instead of five.
+ *
+ * What matters is unchanged and still asserted below: the confidence RISES
+ * when questions are answered, and the route flips from HUMAN_REVIEW to
+ * AUTO_ISSUE. An answer is not evidence and never moves a LEVEL; it moves how
+ * well-founded the assessment's own read is.
+ */
+ok("after answering: confidence rises to ~0.71", Math.abs(after.meanConfidence - 0.709) < 0.005, after.meanConfidence.toFixed(3));
+ok("…which is a rise, which is the point", after.meanConfidence > before.meanConfidence,
+  `${before.meanConfidence.toFixed(3)} → ${after.meanConfidence.toFixed(3)}`);
 ok("the answers CROSSED the threshold", before.meanConfidence < 0.7 && after.meanConfidence >= 0.7);
 eq("after answering: AUTO_ISSUE — the card issues", afterRoute.decision, "AUTO_ISSUE");
 console.log(`  ↳ ${before.meanConfidence.toFixed(2)} → ${after.meanConfidence.toFixed(2)}, ${beforeRoute.decision} → ${afterRoute.decision}`);

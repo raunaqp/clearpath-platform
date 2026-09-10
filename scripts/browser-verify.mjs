@@ -364,6 +364,34 @@ try {
   for (let i = 0; i < 20 && !pdfName; i++) { await sleep(300); pdfName = readdirSync(DL).find((f) => f.endsWith(".pdf")); }
   ok("a real PDF file downloaded", !!pdfName, pdfName || "none");
 
+  console.log("\n── EXAMPLES: one click really does reach a finished card ──");
+  /**
+   * "One click to a finished card" is the first claim a visitor meets on
+   * /submit, and it used to be false — the buttons dropped you at step 1 of
+   * the wizard. The promise was the better behaviour, so the behaviour moved.
+   */
+  await signInAs(page, "vendor");
+  await goto(page, "/submit");
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll("button")].find((e) => e.textContent.trim().startsWith("CerviAI"));
+    b?.click();
+  });
+  await page.waitForFunction(() => location.pathname === "/submit/cerviai/card", { timeout: 10000 }).catch(() => {});
+  ok("an example button lands on the card, not on step 1", page.url().endsWith("/submit/cerviai/card"), page.url());
+  await waitText(page, "attached evidence");
+  t = await body(page);
+  ok("…and it is a real card", t.includes("card id") && t.includes("gates clear"));
+  // The way back, offered FROM the card rather than instead of it.
+  ok("…offering the wizard as the way back", t.includes("open in the wizard"));
+  await clickText(page, "Open in the wizard", "a");
+  await page.waitForFunction(() => location.pathname === "/submit", { timeout: 10000 }).catch(() => {});
+  await sleep(1200);
+  const opened = await page.evaluate(() => ({
+    stage: document.querySelector('[data-wizard-stage][data-state="active"]')?.getAttribute("data-wizard-stage") ?? null,
+    toolName: document.querySelector('input[placeholder^="e.g. CerviAI"]')?.value ?? null,
+  }));
+  ok("…which opens the wizard with the example loaded", opened.stage === "Context" && opened.toolName === "CerviAI", JSON.stringify(opened));
+
   console.log("\n── Declaration: 17 questions, no BODH, no pre-fill ──");
   // BODH is REMOVED from both the card and the wizard. A third-party model
   // score on a readiness card reads as part of the verdict, and a button that

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 import type { GateStatus } from "@/lib/schemas/gate";
 import type { CareLevel, ToolCategory } from "@/lib/schemas/tool";
@@ -117,6 +117,7 @@ const EXAMPLE_EVIDENCE: Record<string, DraftDoc[]> = {
 
 export default function SubmitWizard() {
   const router = useRouter();
+  const params = useSearchParams();
   /**
    * The start screen is the FIRST thing a visitor touches, on a cold load,
    * before anything has been fetched — so it is the one place in the app where
@@ -198,10 +199,23 @@ export default function SubmitWizard() {
   }
 
   /**
-   * Load an example → prefill the description and STARTING answers, then drop
-   * the user into the editable wizard. It does NOT auto-generate: the user can
-   * change any answer, and the declaration-completeness band on the
-   * declaration step recomputes live against whatever is attached.
+   * Arriving from a card's "Open in the wizard" — ?example=cerviai. Gated on
+   * hydration for the same reason every other first-paint control is: the
+   * handler has to exist before the effect can call it.
+   */
+  const exampleParam = params.get("example");
+  useEffect(() => {
+    if (!hydrated || !exampleParam) return;
+    const ex = WIZARD_EXAMPLES.find((e) => e.slug === exampleParam);
+    if (ex) loadExample(ex);
+    // Load once, on arrival. Re-running would discard edits on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, exampleParam]);
+
+  /**
+   * Load an example INTO the wizard. Reached from the card's "Open in the
+   * wizard", not from the landing page — the example buttons go straight to
+   * the finished card now, because that is what the strapline promises.
    */
   function loadExample(ex: WizardExample) {
     const { vendor, tool, gateAnswers } = ex.input;
@@ -358,7 +372,7 @@ export default function SubmitWizard() {
             {WIZARD_EXAMPLES.map((ex) => (
               <button
                 key={ex.key}
-                onClick={() => loadExample(ex)}
+                onClick={() => router.push(`/submit/${ex.slug}/card`)}
                 disabled={!hydrated}
                 aria-busy={!hydrated}
                 className="rounded-card border border-line bg-bg px-3 py-3 text-left transition-colors hover:border-teal-deep/40 disabled:opacity-60"

@@ -75,29 +75,27 @@ export type DiscrepancyInput = {
  *   +50   this gate is BLOCKING the submission from issuing
  *   +10   per level of gap between what the GATE REQUIRES (2) and what the
  *         evidence reaches
- *   -20   NOTHING is on file for this gate
  *
- * THE PENALTY FOR "NOTHING ON FILE" IS DELIBERATE, and it reverses an earlier
- * tie-breaker that added for it.
+ * BLOCKING DOMINATES. Ask first about what is actually holding the submission
+ * up; gap size decides the order among the rest. Without a declaration EVERY
+ * gate is a candidate, so this ranking is the only thing choosing the five.
  *
- * The two rules were measuring different things. For SEVERITY, a gate with
- * nothing behind it is worse. But this ranking decides which questions get
- * ASKED, and there the criterion is answerability: a gap against a document
- * that exists can be closed by an answer — the vendor points at section 4 and
- * the assessment can check. "You sent us nothing" produces "we will send
- * something", which resolves nothing and burns one of five slots.
+ * ── THE ANSWERABILITY PENALTY IS GONE, AND WHY ───────────────────────────
+ * There was a -20 for "nothing on file", on the reasoning that this ranking
+ * decides which questions get ASKED and there the criterion is answerability:
+ * a gap against a document that exists can be closed by pointing at section 4,
+ * where "you sent us nothing" produces "we will send something" and resolves
+ * nothing.
  *
- * Left as it was, every unevidenced gate tied at the top and the five questions
- * came out in alphabetical order — G10, G11, G12, G13, G14 — which is not a
- * ranking at all. That is truer now than it was: without a declaration, EVERY
- * gate is a candidate, so the ranking is the only thing choosing the five.
+ * The reasoning was sound and the rule became unreachable. Once gates resolve
+ * from documents, a gate with nothing on file is UNSCORED, every unscored gate
+ * is in the run's unsupported set, and every caller passes that set as
+ * `blockingItemIds` — so +50 applied to exactly the gates -20 was meant to
+ * demote, and outweighed it every time. It fired only for a hypothetical
+ * caller passing a narrower set, and there is no such caller.
  *
- * BLOCKING DOMINATES BOTH. Ask first about what is actually holding the
- * submission up. Answerability decides the order among gates that are merely
- * imperfect; it must not outrank a gate that is the reason nothing has issued.
- * These two rules together are what make a clean submission and a held one both
- * ask the right five questions, rather than one being tuned at the other's
- * expense.
+ * Removing it does not reorder anything today: the nulls all moved together
+ * and the tie-break on gate id is unchanged.
  */
 /** What every gate has to reach. Fixed, and not something a submitter sets. */
 const GATE_REQUIRES: Level = 2;
@@ -111,7 +109,6 @@ function materialityOf(
   let m = item.isGate ? 100 : 0;
   if (blocking) m += 50;
   m += Math.max(0, gap) * 10;
-  if (supports === null) m -= 20;
   return m;
 }
 

@@ -29,7 +29,7 @@ function VerdictPanel({
   /**
    * The vendor side now carries a v2 CardVerdict (four states) while the
    * hospital's own audit still carries the three-state AuditVerdict from its
-   * own 13-gate engine. Resolve against whichever map owns the value rather
+   * own 14-gate engine. Resolve against whichever map owns the value rather
    * than forcing one into the other's vocabulary — TRIAL_ONLY and
    * NOT_DEPLOYABLE_IN_CONTEXT have no v1 equivalent, and flattening them here
    * would put the two-cards problem back on this very screen.

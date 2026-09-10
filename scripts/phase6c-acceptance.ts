@@ -77,29 +77,33 @@ ok("a gate with nothing on file ranks ABOVE a merely imperfect one when it is bl
   retina.discrepancies.find((d) => d.gateId === "G1")!.materiality);
 
 /**
- * ANSWERABILITY — the -20 for "nothing on file", asserted where it is still
- * OBSERVABLE.
+ * THE ANSWERABILITY PENALTY IS REMOVED, and this asserts it stays removed.
  *
- * The rule is unchanged and the reason for it is unchanged: "you sent us
- * nothing" produces "we will send something", which resolves nothing and burns
- * one of five slots, while a gap against a document that exists can be closed
- * by pointing at section 4.
+ * There was a -20 for "nothing on file", on sound reasoning: this ranking
+ * decides which questions get ASKED, and a gap against a document that exists
+ * can be closed by pointing at section 4, where "you sent us nothing" produces
+ * "we will send something" and resolves nothing.
  *
- * What changed is that it is now DOMINATED whenever the caller passes the
- * run's full unsupported set, because every gate with nothing on file is in
- * that set and +50 for blocking outweighs -20. So it is asserted here on the
- * ranking with no blocking set supplied, which is the shape an assessor
- * console asking about one dimension would use — and the only shape where the
- * two terms are separable.
+ * It became unreachable. Every gate with nothing bound is UNSCORED, every
+ * unscored gate is in the run's unsupported set, and every caller passes that
+ * set as blockingItemIds — so +50 applied to exactly the gates -20 was meant
+ * to demote. It fired only for a caller passing a narrower set, and no such
+ * caller exists.
+ *
+ * What remains is checkable and is the opposite ordering: with no blocking set
+ * supplied at all, gap size alone decides, so a gate with nothing on file
+ * ranks ABOVE one whose document merely falls short.
  */
 const unranked = findDiscrepancies({
   scores: new Map(), evidence: getCardV2("symptombot")!.evidence, path: "PUBLIC",
   supportsFromEvidence: res(getCardV2("symptombot")!.evidence),
 });
-ok("…and BELOW it when nothing is blocking, so answerability decides",
-  unranked.find((d) => d.gateId === "G3")!.materiality <
+ok("with nothing blocking, gap size alone decides the order",
+  unranked.find((d) => d.gateId === "G3")!.materiality >
   unranked.find((d) => d.gateId === "G2")!.materiality,
   `G3(nothing on file)=${unranked.find((d) => d.gateId === "G3")!.materiality} vs G2(doc falls short)=${unranked.find((d) => d.gateId === "G2")!.materiality}`);
+ok("no -20 penalty survives in the engine",
+  !/supports === null\) m -= 20|m -= 20/.test(readFileSync("lib/engine/routing.ts", "utf8")));
 
 // ═════════════════════════════════════════════════════════════════════════
 section("2. An answer binds, it does not invent");

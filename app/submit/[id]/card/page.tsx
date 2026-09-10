@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { getCardV2 } from "@/lib/mock/api";
 import type { CardV2View } from "@/lib/mock/cards-v2";
 import { ReadinessCardV2 } from "@/components/card/v2/ReadinessCardV2";
 import { SiteMatches } from "@/components/registry/SiteMatches";
 import { RegistryListing } from "@/components/card/RegistryListing";
+import { WIZARD_EXAMPLES } from "@/lib/wizard/examples";
 import { getCardBySlug } from "@/lib/mock/api";
 import type { ToolReadinessCard } from "@/lib/schemas/readiness-card";
 
@@ -66,8 +68,32 @@ export default function CardPage() {
     );
   }
 
+  /**
+   * The example buttons on /submit now land HERE, because "one click to a
+   * finished card" was the first claim a visitor met and it was false — the
+   * buttons dropped you at step 1 of the wizard. The promise was the better
+   * behaviour, so the behaviour moved. This is the way back for anyone who
+   * wants to see how the card was built.
+   */
+  const isExample = WIZARD_EXAMPLES.some((e) => e.slug === slug);
+
   return (
     <div className="mx-auto max-w-3xl">
+      {isExample && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-bg-card px-5 py-4">
+          <p className="text-sm leading-relaxed text-ink-2">
+            This is a worked example. Open it in the wizard to see the context and evidence it was
+            built from, and change anything you like.
+          </p>
+          <Link
+            href={`/submit?example=${slug}`}
+            className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-line px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-bg-sink"
+          >
+            Open in the wizard <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
+
       <ReadinessCardV2
         card={view.card}
         tool={view.tool}

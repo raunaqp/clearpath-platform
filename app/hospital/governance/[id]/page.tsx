@@ -14,7 +14,7 @@ import { GATE_STATUS_STYLE, gateDisplayStatus } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 
 /**
- * S17 — the hospital's own 13-gate audit, and where it diverges from the card.
+ * S17 — the hospital's own 14-gate audit, and where it diverges from the card.
  *
  * ─────────────────────────────────────────────────────────────────────────
  * THE READINESS CARD IS AN INPUT, NOT A CONCLUSION
