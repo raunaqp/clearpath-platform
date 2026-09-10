@@ -23,6 +23,39 @@ import { CareLevelEnum, DeploymentModeEnum, OperatorCadreEnum } from "./context"
 export const ConnectivityEnum = z.enum(["reliable", "intermittent", "none"]);
 export type Connectivity = z.infer<typeof ConnectivityEnum>;
 
+export const DigitalEstateSchema = z.object({
+  emrPresent: z.boolean(),
+  /** Whether a FHIR surface exists to integrate against, not merely a roadmap. */
+  fhirSurfaceAvailable: z.boolean(),
+  abdmParticipating: z.boolean(),
+});
+export type DigitalEstate = z.infer<typeof DigitalEstateSchema>;
+
+/**
+ * People, in the terms that decide whether a trial can actually run: how many
+ * operators the site can RELEASE, and for how many hours. A site with two
+ * hundred nurses and no release capacity cannot host a six-hour training.
+ */
+export const SiteStaffingSchema = z.object({
+  releasableOperators: z.number(),
+  operatorCadre: OperatorCadreEnum,
+  trainingCapacityHours: z.number(),
+  clinicianSupervisionOnSite: z.boolean(),
+});
+export type SiteStaffing = z.infer<typeof SiteStaffingSchema>;
+
+/**
+ * Governance the site already has, not governance it would stand up for a
+ * given tool. A DPIA process that exists is a different fact from one that
+ * would be created if someone asked.
+ */
+export const SiteGovernanceSchema = z.object({
+  dpoAppointed: z.boolean(),
+  dpiaProcessInPlace: z.boolean(),
+  incidentRouteDefined: z.boolean(),
+});
+export type SiteGovernance = z.infer<typeof SiteGovernanceSchema>;
+
 export const SiteInfrastructureSchema = z.object({
   /** Hours of backup the site can actually hold. 0 = mains only. */
   powerBackupHours: z.number(),
@@ -36,6 +69,8 @@ export const SiteInfrastructureSchema = z.object({
    */
   referralPathways: z.array(z.string()),
   devices: z.array(z.string()),
+  /** Where the backup actually comes from — a camp on a generator is not mains. */
+  powerNote: z.string().optional(),
 });
 export type SiteInfrastructure = z.infer<typeof SiteInfrastructureSchema>;
 
@@ -43,6 +78,21 @@ export const SiteOperatingProfileSchema = z.object({
   hospitalId: z.string(),
   /** When this profile was baselined. Matching cites it. */
   baselinedAt: z.string(),
+  /**
+   * One line placing the site for a reader.
+   *
+   * The hospitals in this demo are FICTIONAL on purpose — it fabricates
+   * governance decisions, named signatories and trial outcomes, and none of
+   * that may attach to a real institution. But a fictional name costs an
+   * Indian audience a beat of recognition, and this line buys it back without
+   * implicating anyone.
+   */
+  archetype: z.string(),
+  /** Facility descriptor and the catchment the profile covers. */
+  facility: z.object({ type: z.string(), catchment: z.string() }),
+  digital: DigitalEstateSchema,
+  staffing: SiteStaffingSchema,
+  governance: SiteGovernanceSchema,
   /** Levels of care the site actually operates. */
   careLevels: z.array(CareLevelEnum),
   /** Cadres the site actually staffs. */
@@ -79,6 +129,21 @@ export const ProblemEntrySchema = z.object({
   currentPathway: z.string(),
   /** e.g. "11-day mean colposcopy turnaround". */
   currentMetric: z.string().optional(),
+  /** The problem in the site's own words. */
+  description: z.string().optional(),
+  /** The service line it sits in. */
+  serviceLine: z.string().optional(),
+  /** What any solution must not break — the real shape of the constraint. */
+  constraint: z.string().optional(),
+  /**
+   * THE HIGHEST-LEVERAGE FIELD IN THE SYSTEM.
+   *
+   * The S20 charter's endpoints derive from this. Writing it BEFORE the site
+   * has seen any tool is what stops endpoints being retrofitted to whatever the
+   * data happened to show — which is why the register carries a publication
+   * date and why every screen that reads this displays it.
+   */
+  successDefinition: z.string().optional(),
 });
 export type ProblemEntry = z.infer<typeof ProblemEntrySchema>;
 
@@ -88,4 +153,9 @@ export const ProblemRegisterSchema = z.object({
   publishedAt: z.string(),
   entries: z.array(ProblemEntrySchema),
 });
+
+/** How many problems the site has ranked. "#2 of 9" needs the denominator. */
+export function rankedCount(register: ProblemRegister): number {
+  return register.entries.length;
+}
 export type ProblemRegister = z.infer<typeof ProblemRegisterSchema>;

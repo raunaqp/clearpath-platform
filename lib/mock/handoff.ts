@@ -10,6 +10,8 @@
 
 import type {
   DeploymentRequest,
+  TriageDecision,
+  TriageOutcomeState,
   FacilitationEntry,
   FacilitationRecord,
   FacilitationStep,
@@ -25,6 +27,7 @@ import { getItem } from "@/lib/engine/item-bank";
 
 const INTEREST_KEY = "clearpath-interest-v1";
 const REQUEST_KEY = "clearpath-requests-v1";
+const TRIAGE_KEY = "clearpath-triage-v1";
 
 // ── persistence (metadata only, same convention as the rest of the mock) ────
 
@@ -48,6 +51,7 @@ function save<T>(key: string, rows: T[]) {
 
 let interests: InterestRecord[] | null = null;
 let requests: DeploymentRequest[] | null = null;
+let triageDecisions: TriageDecision[] | null = null;
 
 function allInterests(): InterestRecord[] {
   if (!interests) interests = load<InterestRecord>(INTEREST_KEY);
@@ -61,8 +65,10 @@ function allRequests(): DeploymentRequest[] {
 export function resetHandoff() {
   interests = [];
   requests = [];
+  triageDecisions = [];
   save(INTEREST_KEY, interests);
   save(REQUEST_KEY, requests);
+  save(TRIAGE_KEY, triageDecisions);
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -354,4 +360,116 @@ export function handoffState(slug: string): HandoffState {
   }
   if (getInterest(slug)) return "INTEREST_WITH_CLEARPATH";
   return "ASSESSED";
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// S16 · Triage decisions, and the return path
+// ═════════════════════════════════════════════════════════════════════════
+
+function allTriage(): TriageDecision[] {
+  if (!triageDecisions) triageDecisions = load<TriageDecision>(TRIAGE_KEY);
+  return triageDecisions;
+}
+
+export type RecordTriageInput = {
+  slug: string;
+  outcome: TriageOutcomeState;
+  decidedBy: string;
+  reason?: string;
+  revisitAt?: string;
+  findings: TriageDecision["findings"];
+  at?: string;
+};
+
+/**
+ * Record a triage decision.
+ *
+ * PARK and DECLINE REQUIRE A REASON, and it throws without one. A decline with
+ * no reason cannot be returned to the innovator, and a decline that cannot be
+ * returned is indistinguishable from a submission that was ignored — which is
+ * exactly the experience this whole layer exists to stop.
+ *
+ * The decision also moves the request's own status, so the innovator's side and
+ * the hospital's side cannot come to disagree about what happened.
+ */
+export function recordTriage(input: RecordTriageInput): TriageDecision {
+  const request = getDeploymentRequest(input.slug);
+  if (!request) throw new Error(`Triage: no request for "${input.slug}".`);
+
+  if (input.outcome !== "ADVANCE" && !input.reason?.trim()) {
+    throw new Error(
+      `Triage: a ${input.outcome.toLowerCase()} needs a reason. It returns to the innovator, and one with nothing in it is indistinguishable from being ignored.`
+    );
+  }
+
+  const at = input.at ?? new Date().toISOString();
+  const decision: TriageDecision = {
+    id: `triage-${input.slug}`,
+    requestId: request.id,
+    slug: input.slug,
+    hospitalId: request.hospitalId,
+    hospitalName: request.hospitalName,
+    outcome: input.outcome,
+    decidedAt: at,
+    decidedBy: input.decidedBy,
+    reason: input.reason?.trim() || null,
+    revisitAt: input.revisitAt ?? null,
+    findings: input.findings,
+    // A reason exists, so it goes back. ADVANCE has nothing to return.
+    returnedToInnovator: input.outcome !== "ADVANCE",
+  };
+
+  const rows = allTriage();
+  const i = rows.findIndex((r) => r.slug === input.slug);
+  if (i >= 0) rows[i] = decision;
+  else rows.push(decision);
+  save(TRIAGE_KEY, rows);
+
+  // Keep the request in step with the decision.
+  const reqs = allRequests();
+  const ri = reqs.findIndex((r) => r.slug === input.slug);
+  if (ri >= 0) {
+    reqs[ri] = {
+      ...reqs[ri],
+      status: input.outcome === "DECLINE" ? "DECLINED" : input.outcome === "ADVANCE" ? "UNDER_ASSESSMENT" : "RECEIVED",
+      hospitalResponse: {
+        status: input.outcome === "DECLINE" ? "DECLINED" : input.outcome === "ADVANCE" ? "UNDER_ASSESSMENT" : "RECEIVED",
+        at,
+        note: decision.reason ?? "Advanced to audit.",
+      },
+    };
+    save(REQUEST_KEY, reqs);
+  }
+
+  return decision;
+}
+
+export function getTriage(slug: string): TriageDecision | undefined {
+  return allTriage().find((r) => r.slug === slug);
+}
+
+/**
+ * THE RETURN PATH. What the innovator sees about a hospital's triage decision.
+ *
+ * Built now even though the innovator-side screen is not in this phase — a
+ * decline reason that has nowhere to go is a decline reason that quietly does
+ * not exist, and building the reader later tends to mean discovering the writer
+ * never kept enough.
+ */
+export function triageReturnForInnovator(slug: string): {
+  outcome: TriageOutcomeState;
+  hospitalName: string;
+  reason: string | null;
+  revisitAt: string | null;
+  at: string;
+} | undefined {
+  const d = getTriage(slug);
+  if (!d || !d.returnedToInnovator) return undefined;
+  return {
+    outcome: d.outcome,
+    hospitalName: d.hospitalName,
+    reason: d.reason,
+    revisitAt: d.revisitAt,
+    at: d.decidedAt,
+  };
 }

@@ -25,6 +25,18 @@ export const SITE_PROFILES: SiteOperatingProfile[] = [
   {
     hospitalId: "hosp-northvale",
     baselinedAt: SITE_PROFILE_BASELINED_AT,
+    archetype:
+      "A tertiary teaching hospital with district screening outreach across 4 CHCs. " +
+      "Representative of a Tier B public-linked institution in western Tamil Nadu.",
+    facility: { type: "Tertiary teaching hospital", catchment: "4 CHCs in the screening catchment" },
+    digital: { emrPresent: true, fhirSurfaceAvailable: true, abdmParticipating: true },
+    staffing: {
+      releasableOperators: 12,
+      operatorCadre: "STAFF_NURSE",
+      trainingCapacityHours: 6,
+      clinicianSupervisionOnSite: true,
+    },
+    governance: { dpoAppointed: true, dpiaProcessInPlace: true, incidentRouteDefined: true },
     // A tertiary centre that also RUNS community outreach — which is why a
     // CHC-context tool can be contained by it. The card's context is CHC /
     // staff nurse / camp, and this site does exactly that as outreach.
@@ -37,11 +49,24 @@ export const SITE_PROFILES: SiteOperatingProfile[] = [
       offlineCaptureSupported: true,
       referralPathways: ["colposcopy", "oncology", "ophthalmology", "TB confirmatory"],
       devices: ["colposcope", "fundus camera", "digital X-ray", "tablets"],
+      powerNote: "8h backup at the base hospital; camp sites are generator-dependent.",
     },
   },
   {
     hospitalId: "hosp-site-b",
     baselinedAt: SITE_PROFILE_BASELINED_AT,
+    archetype:
+      "A district hospital building toward hosting AI screening for its own catchment. " +
+      "Representative of a site still closing its readiness gaps.",
+    facility: { type: "District hospital", catchment: "Own catchment only" },
+    digital: { emrPresent: true, fhirSurfaceAvailable: false, abdmParticipating: false },
+    staffing: {
+      releasableOperators: 4,
+      operatorCadre: "STAFF_NURSE",
+      trainingCapacityHours: 3,
+      clinicianSupervisionOnSite: false,
+    },
+    governance: { dpoAppointed: false, dpiaProcessInPlace: false, incidentRouteDefined: true },
     careLevels: ["DISTRICT_HOSPITAL", "PHC"],
     cadres: ["STAFF_NURSE", "MO", "ANM"],
     deploymentModes: ["CAMP", "OPD_QUEUE"],
@@ -58,6 +83,18 @@ export const SITE_PROFILES: SiteOperatingProfile[] = [
   {
     hospitalId: "hosp-lakeview",
     baselinedAt: SITE_PROFILE_BASELINED_AT,
+    archetype:
+      "A private fertility and IVF centre hosting reproductive-health AI trials. " +
+      "Representative of a specialty private institution.",
+    facility: { type: "Private fertility centre", catchment: "Self-referred and referred couples" },
+    digital: { emrPresent: true, fhirSurfaceAvailable: true, abdmParticipating: false },
+    staffing: {
+      releasableOperators: 6,
+      operatorCadre: "SPECIALIST",
+      trainingCapacityHours: 8,
+      clinicianSupervisionOnSite: true,
+    },
+    governance: { dpoAppointed: true, dpiaProcessInPlace: true, incidentRouteDefined: true },
     careLevels: ["PRIVATE_SECONDARY", "PRIVATE_TERTIARY"],
     cadres: ["SPECIALIST", "CLINICIAN", "LAB_TECHNICIAN"],
     deploymentModes: ["OPD_QUEUE", "WARD"],
@@ -85,12 +122,24 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
         currentMetric: "9-day mean time to confirmation",
       },
       {
+        // The one entry authored in full. Its successDefinition is what the
+        // S20 charter's endpoints will derive from, and it was written before
+        // the site had seen any tool — which is the whole point of dating the
+        // register.
         id: "pr-northvale-cervical-screening",
         rank: 2,
         name: "Cervical screening",
+        description:
+          "Cervical abnormalities detected late, camp screening yield low, referral loss high.",
+        serviceLine: "Community screening outreach",
         volumePerYear: 3400,
-        currentPathway: "VIA at outreach camps, colposcopy referral to the centre.",
+        currentPathway:
+          "VIA by staff nurse, abnormal cases referred to colposcopy.",
         currentMetric: "11-day mean colposcopy turnaround",
+        constraint:
+          "No additional nurse time per patient. Must fit the existing camp rota.",
+        successDefinition:
+          "Improved detection of referable abnormalities without increasing nurse workload, with referral completion at or above 80%.",
       },
       {
         id: "pr-northvale-diabetic-retinopathy",
@@ -107,6 +156,44 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
         volumePerYear: 4800,
         currentPathway: "Venous haemoglobin sent to the district lab.",
         currentMetric: "3-day mean result turnaround",
+      },
+      // Ranks 5-9 are named and sized but not yet authored in full. A register
+      // in progress is the honest state — and "#2 of 9" needs a real
+      // denominator, not a number asserted beside four entries.
+      {
+        id: "pr-northvale-hypertension",
+        rank: 5,
+        name: "Hypertension follow-up",
+        volumePerYear: 7600,
+        currentPathway: "Opportunistic measurement at OPD, paper follow-up register.",
+      },
+      {
+        id: "pr-northvale-diabetes-control",
+        rank: 6,
+        name: "Diabetes control",
+        volumePerYear: 5100,
+        currentPathway: "HbA1c at the base hospital, quarterly review.",
+      },
+      {
+        id: "pr-northvale-oral-cancer",
+        rank: 7,
+        name: "Oral cancer screening",
+        volumePerYear: 2800,
+        currentPathway: "Visual examination at camps, biopsy referral to the centre.",
+      },
+      {
+        id: "pr-northvale-newborn-hearing",
+        rank: 8,
+        name: "Newborn hearing screening",
+        volumePerYear: 1600,
+        currentPathway: "OAE at the base hospital before discharge.",
+      },
+      {
+        id: "pr-northvale-breast-screening",
+        rank: 9,
+        name: "Breast screening",
+        volumePerYear: 1900,
+        currentPathway: "Clinical breast examination at camps, imaging referral.",
       },
     ],
   },

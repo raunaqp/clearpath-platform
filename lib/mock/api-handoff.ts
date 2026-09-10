@@ -20,3 +20,8 @@ export const createDeploymentRequest = (i: handoff.CreateRequestInput) =>
   latency(handoff.createDeploymentRequest(i));
 export const getDeploymentRequest = (slug: string) => latency(handoff.getDeploymentRequest(slug));
 export const getHandoffState = (slug: string) => latency(handoff.handoffState(slug));
+
+export const recordTriage = (i: handoff.RecordTriageInput) => latency(handoff.recordTriage(i));
+export const getTriage = (slug: string) => latency(handoff.getTriage(slug));
+export const triageReturnForInnovator = (slug: string) =>
+  latency(handoff.triageReturnForInnovator(slug));

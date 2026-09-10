@@ -271,6 +271,40 @@ export const DeploymentRequestSchema = z.object({
 });
 export type DeploymentRequest = z.infer<typeof DeploymentRequestSchema>;
 
+/**
+ * A hospital's triage decision, and the reason that returns to the innovator.
+ *
+ * EVERY DECLINE REASON GOES BACK. A vendor who is declined without knowing why
+ * learns nothing and re-submits the same thing; a vendor told "not on our
+ * register" or "no colposcopy pathway in the catchment" knows exactly what they
+ * are looking at. `returnedToInnovator` is a field rather than an assumption so
+ * a decline with no reason cannot be recorded as if it had been communicated.
+ */
+export const TriageOutcomeEnum = z.enum(["ADVANCE", "PARK", "DECLINE"]);
+export type TriageOutcomeState = z.infer<typeof TriageOutcomeEnum>;
+
+export const TriageDecisionSchema = z.object({
+  id: z.string(),
+  requestId: z.string(),
+  slug: z.string(),
+  hospitalId: z.string(),
+  hospitalName: z.string(),
+  outcome: TriageOutcomeEnum,
+  decidedAt: z.string(),
+  decidedBy: z.string(),
+  /** Required on PARK and DECLINE. Null is only valid on ADVANCE. */
+  reason: z.string().nullable(),
+  /** Set on PARK — when the site will look again. */
+  revisitAt: z.string().nullable(),
+  /** The four findings as they stood when the decision was taken. */
+  findings: z.array(
+    z.object({ key: z.string(), question: z.string(), status: z.string(), finding: z.string() })
+  ),
+  /** Whether the reason has been returned to the innovator. */
+  returnedToInnovator: z.boolean(),
+});
+export type TriageDecision = z.infer<typeof TriageDecisionSchema>;
+
 /** The journey state shown to the innovator across Act A. */
 export const HandoffStateEnum = z.enum([
   "ASSESSED",
