@@ -218,7 +218,7 @@ export default function AssessorConsole() {
 
               {error && <p className="text-sm text-coral-brand">{error}</p>}
 
-              <button onClick={complete} disabled={busy || !canComplete}
+              <button onClick={complete} disabled={busy || !canComplete} aria-busy={busy}
                 className="rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50">
                 {busy ? "Recording…" : "Complete review and issue the card"}
               </button>

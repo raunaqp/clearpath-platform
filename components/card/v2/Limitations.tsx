@@ -13,7 +13,7 @@ import type { ReadinessCard } from "@/lib/schemas/readiness-card";
  */
 export function Limitations({ card }: { card: ReadinessCard }) {
   return (
-    <section className="rounded-xl border border-[#D9D5C8] bg-white px-5 py-5">
+    <section className="rounded-xl border border-[#D9D5C8] bg-white px-5 py-4">
       <h2 className="mb-3 border-b border-[#D9D5C8] pb-1.5 font-serif text-xl text-[#0E1411]">
         What this assessment could not establish
       </h2>

@@ -57,7 +57,11 @@ ok("…and the card links to it", readFileSync("components/card/v2/ReadinessCard
 section("1. The 88/100 composite is gone");
 // ═════════════════════════════════════════════════════════════════════════
 
-const audit = buildNorthvaleAudit("cerviai");
+const audit = buildNorthvaleAudit("cerviai")!;
+// A slug with no card has no submission to audit, so no audit is fabricated
+// for it. The screen used to render a full fourteen-gate audit for a tool that
+// did not exist.
+ok("an unknown slug gets no audit at all", buildNorthvaleAudit("does-not-exist") === null);
 ok("AuditResult validates", AuditResultSchema.safeParse(audit).success);
 ok("there is no `score` field", !("score" in (audit as object)));
 eq("12 pass · 2 conditional", [audit.tally.pass, audit.tally.conditional], [12, 2]);
@@ -217,5 +221,34 @@ eq("exit: devices back in 14 days", charter.exit.deviceReturnDays, 14);
 ok("…and flagged women followed regardless of early termination", /regardless of early termination/.test(charter.exit.followUp));
 
 resetHandoff(); resetRemediations(); resetGovernance();
+// ═════════════════════════════════════════════════════════════════════════
+section("Polish — a pending state a screen reader can hear");
+// ═════════════════════════════════════════════════════════════════════════
+
+/**
+ * Every control that WRITES disables itself while the write is in flight and
+ * swaps its label. That is a signal only a sighted user gets. `aria-busy` is
+ * the same fact, announced — and it has to sit on the control itself, so it
+ * cannot be added once in a shell component and forgotten here.
+ *
+ * The check scans for a `disabled=` whose expression mentions a pending flag
+ * and asserts the same element carries aria-busy.
+ */
+const PENDING = /\b(busy|pending|saving|sending|submitting)\b/;
+const missingBusy: string[] = [];
+for (const file of [...walk("app"), ...walk("components")]) {
+  const src = readFileSync(file, "utf8");
+  for (const m of src.matchAll(/disabled=\{([^}]*)\}/g)) {
+    if (!PENDING.test(m[1])) continue;
+    // `!busy` disables on the ABSENCE of a write, which is not a pending state.
+    const terms = m[1].split(/\|\||&&/).map((t) => t.trim()).filter((t) => PENDING.test(t));
+    if (terms.length === 0 || terms[0].startsWith("!")) continue;
+    const window = src.slice(Math.max(0, m.index! - 400), m.index! + 400);
+    if (!window.includes("aria-busy")) missingBusy.push(`${file}:${m[1]}`);
+  }
+}
+ok("every writing control carries aria-busy alongside its disabled state",
+  missingBusy.length === 0, missingBusy.slice(0, 4).join(" | "));
+
 console.log(`\nPHASE 6b ACCEPTANCE ${fail === 0 ? "PASSED" : "FAILED"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

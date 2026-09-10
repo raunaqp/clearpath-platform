@@ -188,7 +188,7 @@ export default function AuditPage() {
       </header>
 
       {/* AI suggestion (mock TL;DR over the submitted documents) */}
-      <section className="rounded-xl border border-[#0F6E56]/30 bg-[#E1F5EE]/50 p-4">
+      <section className="rounded-xl border border-[#0F6E56]/30 bg-[#E1F5EE]/50 px-5 py-4">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#0F6E56]" />
           <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#0F6E56]">
@@ -270,7 +270,7 @@ export default function AuditPage() {
       </div>
 
       {/* Decision — Save / Approve / Reject with a reason */}
-      <section className="rounded-xl border border-line bg-bg-card p-5">
+      <section className="rounded-xl border border-line bg-bg-card px-5 py-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-serif text-lg text-ink">Decision</h2>
           <p className="text-sm text-muted">
@@ -292,6 +292,7 @@ export default function AuditPage() {
           <button
             onClick={saveAudit}
             disabled={busy !== null}
+            aria-busy={busy !== null}
             className="inline-flex items-center gap-2 rounded-md border border-line px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-bg-sink disabled:opacity-60"
           >
             {busy === "save" ? "Saving…" : "Save audit"}
@@ -299,6 +300,7 @@ export default function AuditPage() {
           <button
             onClick={() => decide("approved")}
             disabled={busy !== null || !reason.trim() || !auditComplete}
+            aria-busy={busy !== null}
             className="inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             <Check className="h-4 w-4" /> Approve
@@ -306,6 +308,7 @@ export default function AuditPage() {
           <button
             onClick={() => decide("rejected")}
             disabled={busy !== null || !reason.trim() || !auditComplete}
+            aria-busy={busy !== null}
             className="inline-flex items-center gap-2 rounded-md border border-coral-brand px-4 py-2 text-sm text-coral-brand transition-colors hover:bg-coral-light disabled:opacity-50"
           >
             <X className="h-4 w-4" /> Reject

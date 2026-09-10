@@ -201,6 +201,7 @@ export function CtriRegistration({
             <button
               onClick={prepare}
               disabled={busy || !compliance.allPass}
+              aria-busy={busy}
               className="inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy ? "Preparing…" : "Prepare for CTRI registration"}

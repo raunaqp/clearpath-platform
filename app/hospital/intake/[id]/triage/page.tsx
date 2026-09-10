@@ -245,6 +245,7 @@ export default function TriagePage() {
           <button
             onClick={decide}
             disabled={busy || (needsReason && !reason.trim())}
+            aria-busy={busy}
             className="rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {busy ? "Recording…" : `Record — ${TRIAGE_OUTCOME_LABEL[outcome].toLowerCase()}`}

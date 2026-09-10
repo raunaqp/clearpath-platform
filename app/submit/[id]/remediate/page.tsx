@@ -270,6 +270,7 @@ export default function RemediatePage() {
                       <button
                         onClick={() => attach(c)}
                         disabled={busy}
+                        aria-busy={busy}
                         className="mt-3 rounded-lg bg-[#0F6E56] px-4 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                       >
                         {busy ? "Attaching…" : "Attach evidence and reissue"}

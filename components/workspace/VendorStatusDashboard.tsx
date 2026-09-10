@@ -83,7 +83,7 @@ function HospitalStatusCard({ row }: { row: Row }) {
   const alerts = deployment?.metrics.find((m) => m.key === "alerts");
 
   return (
-    <div className="rounded-card border border-line bg-bg-card p-5">
+    <div className="rounded-card border border-line bg-bg-card px-5 py-4">
       <p className="mb-3 text-sm font-medium text-ink">{hospital?.name ?? "—"}</p>
 
       {/* Light stage timeline */}

@@ -683,6 +683,64 @@ try {
   ok("/research wears the PUBLIC header, signed out", rsNav.includes("home") && rsNav.includes("about") && rsNav.includes("framework") && !rsNav.includes("inbox") && !rsNav.includes("registry") && !rsNav.includes("my applications"));
   ok("Research still NOT in the nav while ON /research", !rsNav.includes("research"));
 
+  // ═══════════════════════════════════════════════════════════════════════
+  console.log("\n── LAYOUT INVARIANTS at 1280px, across every route ──");
+  // ═══════════════════════════════════════════════════════════════════════
+  /**
+   * Three things that were true page by page and false somewhere else, which
+   * is what "consistency" means in practice. Checked on every route rather
+   * than the one that was last complained about:
+   *
+   *   no horizontal scroll   a table wide enough to scroll sideways hides the
+   *                          column a reader came for.
+   *   nothing wraps in a badge or button   a two-line pill reads as two states.
+   *   measure ~70 characters  counted from the element's OWN computed font,
+   *                          not from `ch` — `ch` is the width of "0", a third
+   *                          wider than the average letter, so a 70ch cap
+   *                          measures out at over 90 real characters.
+   */
+  const LAYOUT_ROUTES = [
+    ["/", "hospital"], ["/about", "hospital"], ["/framework", "hospital"], ["/research", "hospital"],
+    ["/for-hospitals", "hospital"], ["/for-innovators", "hospital"], ["/vendors", "vendor"],
+    ["/registry", "vendor"], ["/registry/cerviai", "vendor"], ["/applications", "vendor"],
+    ["/submit/cerviai/card", "vendor"], ["/submit/cerviai/assess", "vendor"],
+    ["/submit/retinascan/clarify", "vendor"], ["/submit/cerviai/checklist", "vendor"],
+    ["/hospital", "hospital"], ["/hospital/readiness", "hospital"], ["/hospital/cerviai/audit", "hospital"],
+    ["/hospital/governance/cerviai", "hospital"], ["/hospital/intake/cerviai", "hospital"],
+    ["/workspace/dep-cerviai-northvale", "hospital"], ["/assessor", "assessor"],
+  ];
+  const layout = { scroll: [], wrap: [], measure: [] };
+  for (const [route, role] of LAYOUT_ROUTES) {
+    await signInAs(page, role);
+    await goto(page, route);
+    await sleep(2200);
+    const r = await page.evaluate(() => {
+      const scrollers = [...document.querySelectorAll("main *")].filter((el) => {
+        if (el.clientWidth === 0 || el.scrollWidth <= el.clientWidth + 1) return false;
+        const cs = getComputedStyle(el);
+        return cs.overflowX === "auto" || cs.overflowX === "scroll" || el.tagName === "TABLE";
+      }).length;
+      const wrapped = [...document.querySelectorAll("main button, main [class*=rounded-pill]")]
+        .filter((e) => e.getClientRects().length > 1 && e.textContent.trim()).length;
+      const ctx = document.createElement("canvas").getContext("2d");
+      const wide = [...document.querySelectorAll("main p, main li")].filter((e) => {
+        const t = e.textContent.trim();
+        if (t.length < 130) return false;
+        const cs = getComputedStyle(e);
+        ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const sample = t.slice(0, 200);
+        return e.clientWidth / (ctx.measureText(sample).width / sample.length) > 78;
+      }).length;
+      return { scrollers, wrapped, wide, body: document.documentElement.scrollWidth > window.innerWidth };
+    });
+    if (r.scrollers || r.body) layout.scroll.push(route);
+    if (r.wrapped) layout.wrap.push(route);
+    if (r.wide) layout.measure.push(route);
+  }
+  ok(`no horizontal scroll on any of ${LAYOUT_ROUTES.length} routes`, layout.scroll.length === 0, layout.scroll.join(", "));
+  ok("nothing wraps inside a button or badge", layout.wrap.length === 0, layout.wrap.join(", "));
+  ok("prose stays near 70 characters per line", layout.measure.length === 0, layout.measure.join(", "));
+
   console.log(`\n${failures === 0 ? "BROWSER VERIFY PASSED" : `${failures} CHECK(S) FAILED`}`);
 } catch (e) {
   console.error("ERROR:", e.message);

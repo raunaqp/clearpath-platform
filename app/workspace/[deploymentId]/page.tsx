@@ -199,7 +199,7 @@ function HospitalWorkspace() {
           <RolesList dep={dep} />
 
           {dep.phase === (isTrial ? "ethics_setup" : "setup") ? (
-            <button onClick={start} disabled={busy} className="mt-4 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">
+            <button onClick={start} disabled={busy} aria-busy={busy} className="mt-4 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">
               {isTrial ? "Start enrolment" : "Start deployment"}
             </button>
           ) : (
@@ -238,7 +238,7 @@ function HospitalWorkspace() {
           ) : dep.endpoints.length === 0 ? (
             <div className="text-sm text-muted">
               <p>Study endpoints are computed against the trial's targets.</p>
-              <button onClick={generateAnalysis} disabled={busy} className="mt-3 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Generate analysis</button>
+              <button onClick={generateAnalysis} disabled={busy} aria-busy={busy} className="mt-3 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Generate analysis</button>
             </div>
           ) : (
             <>
@@ -255,7 +255,7 @@ function HospitalWorkspace() {
               </ul>
               {dep.recommendation && <RecommendationBand rec={dep.recommendation} />}
               <div className="flex flex-wrap items-center gap-3">
-                {dep.phase !== "closeout" && <button onClick={prepareFinal} disabled={busy} className="mt-4 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Prepare closeout</button>}
+                {dep.phase !== "closeout" && <button onClick={prepareFinal} disabled={busy} aria-busy={busy} className="mt-4 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Prepare closeout</button>}
                 <ReportPdfButton />
               </div>
             </>
@@ -269,7 +269,7 @@ function HospitalWorkspace() {
           {dep.scorecard.length === 0 ? (
             <div className="text-sm text-muted">
               <p>The operational scorecard is generated from the deployment's evidence.</p>
-              <button onClick={generateReview} disabled={busy} className="mt-3 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Generate scorecard</button>
+              <button onClick={generateReview} disabled={busy} aria-busy={busy} className="mt-3 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Generate scorecard</button>
             </div>
           ) : (
             <>
@@ -284,7 +284,7 @@ function HospitalWorkspace() {
               </div>
               {dep.recommendation && <RecommendationBand rec={dep.recommendation} />}
               <div className="flex flex-wrap items-center gap-3">
-                {dep.phase !== "handover" && <button onClick={prepareFinal} disabled={busy} className="mt-4 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Prepare handover</button>}
+                {dep.phase !== "handover" && <button onClick={prepareFinal} disabled={busy} aria-busy={busy} className="mt-4 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Prepare handover</button>}
                 <ReportPdfButton />
               </div>
             </>
@@ -298,7 +298,7 @@ function HospitalWorkspace() {
           {!dep.ownership ? (
             <div className="text-sm text-muted">
               <p>Prepare the ownership plan to {isTrial ? "close the trial out" : "hand the deployment over"}.</p>
-              <button onClick={prepareFinal} disabled={busy} className="mt-3 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Prepare {isTrial ? "closeout" : "handover"}</button>
+              <button onClick={prepareFinal} disabled={busy} aria-busy={busy} className="mt-3 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Prepare {isTrial ? "closeout" : "handover"}</button>
             </div>
           ) : (
             <>
@@ -311,7 +311,7 @@ function HospitalWorkspace() {
                 {dep.published ? (
                   <p className="flex items-center gap-1.5 text-sm text-[#3B6D11]"><Check className="h-4 w-4" /> Result published to the registry.<Link href="/registry" className="text-teal-deep">View in the registry →</Link></p>
                 ) : (
-                  <button onClick={publish} disabled={busy} className="inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60"><Store className="h-4 w-4" /> Publish result to marketplace registry</button>
+                  <button onClick={publish} disabled={busy} aria-busy={busy} className="inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60"><Store className="h-4 w-4" /> Publish result to marketplace registry</button>
                 )}
                 <button onClick={downloadReport} className="inline-flex items-center gap-2 rounded-md border border-line px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-bg-sink"><FileDown className="h-4 w-4" /> Download report (PDF)</button>
               </div>

@@ -57,8 +57,8 @@ export function ReadinessCardV2({
 
   return (
     <article className="space-y-5">
-      <div className={cn("rounded-2xl border p-4 sm:p-6", v.outer)}>
-        <div className="rounded-xl border border-[#D9D5C8] bg-white px-5 py-6 sm:px-6 sm:py-8 md:px-8">
+      <div className={cn("rounded-2xl border px-5 py-4 sm:px-6 sm:py-5", v.outer)}>
+        <div className="rounded-xl border border-[#D9D5C8] bg-white px-5 py-5 sm:px-6 sm:py-6 md:px-8">
           <div className="mb-4 flex items-start justify-between gap-4">
             <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#BA7517]">
               Readiness card

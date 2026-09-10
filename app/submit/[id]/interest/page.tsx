@@ -210,6 +210,7 @@ export default function InterestPage() {
           <button
             onClick={submit}
             disabled={!sharing || busy}
+            aria-busy={busy}
             className="inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {busy ? "Submitting…" : "Submit interest to ClearPath"} <ArrowRight className="h-4 w-4" />

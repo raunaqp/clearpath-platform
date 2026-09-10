@@ -51,6 +51,7 @@ export function CommitteeSection({
         <button
           onClick={add}
           disabled={busy || !person.trim() || !role.trim()}
+          aria-busy={busy}
           className="inline-flex items-center justify-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           <UserPlus className="h-4 w-4" /> {busy ? "Adding…" : "Add"}

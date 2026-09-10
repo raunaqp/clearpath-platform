@@ -177,6 +177,7 @@ export default function ClarifyPage() {
                 <button
                   onClick={() => submit(q)}
                   disabled={busy === q.id || !(drafts[q.id] ?? "").trim()}
+                  aria-busy={busy === q.id}
                   className="mt-2 rounded-md bg-teal-deep px-3.5 py-1.5 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   {busy === q.id ? "Recording…" : "Answer"}

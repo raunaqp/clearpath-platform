@@ -54,8 +54,12 @@ const config: Config = {
         cream: "#F5F0E8",
       },
       fontFamily: {
-        serif: ["Source Serif 4", "Georgia", "serif"],
-        sans: ["var(--font-geist-sans)", "Inter", "system-ui", "sans-serif"],
+        // Brand system: Georgia headings, Calibri body. Both are named FIRST
+        // so a machine that has them uses them; the rest of each stack is a
+        // metric-compatible fallback (Carlito for Calibri) and then the
+        // webfont that was standing in for them.
+        serif: ["Georgia", "Source Serif 4", "Times New Roman", "serif"],
+        sans: ["Calibri", "Carlito", "var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
       },
       borderRadius: {
@@ -74,7 +78,16 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  /**
+   * No `plugins` here. This file is loaded as ESM by @tailwindcss/node, where
+   * `require` is not defined — the entry only worked because the config was
+   * cached and never re-evaluated. ANY edit to this file took the dev server
+   * down with "require is not defined", which is why the font stack below
+   * could not be changed without this.
+   *
+   * The plugin is loaded by `@plugin "tailwindcss-animate"` in globals.css,
+   * which is the Tailwind v4 way and was already doing the work.
+   */
 };
 
 export default config;

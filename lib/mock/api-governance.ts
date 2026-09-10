@@ -18,6 +18,10 @@ function latency<T>(value: T): Promise<T> {
 
 /** Northvale's own audit, run through the same engine every audit uses. */
 export function buildNorthvaleAudit(slug: string) {
+  // A slug with no card has no submission to audit. Without this the screen
+  // rendered a complete fourteen-gate audit for a tool that does not exist —
+  // an empty state that looked like a finished one.
+  if (!getCardV2(slug)) return null;
   return runHospitalAudit({
     id: `audit-${slug}-northvale`,
     submissionId: `sub-${slug}`,
@@ -38,9 +42,11 @@ export function buildDivergences(slug: string) {
     scores: new Map(),
     selfDeclaration: declaration,
   });
+  const audit = buildNorthvaleAudit(slug);
+  if (!audit) return [];
   return findDivergences({
     card: view.card,
-    audit: buildNorthvaleAudit(slug),
+    audit,
     resolvedLevels: resolved,
   });
 }

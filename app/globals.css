@@ -19,6 +19,9 @@
 }
 
 :root {
+  /* ~70 characters at the element's own size. See the measure rule below. */
+  --measure: 32em;
+
   --background: #F7F6F2;
   --foreground: #0E1411;
   --card: #FDFCF8;
@@ -53,4 +56,47 @@ body {
 :focus-visible {
   outline: 2px solid #0F6E56;
   outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TYPE AND DENSITY — one scale, applied
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * MEASURE. Body copy is capped at ~70 characters per line.
+ *
+ * Set in `em`, not `ch` or `px`. `ch` is the width of "0", which in these
+ * faces is a third wider than the average letter — 70ch measured out at 92
+ * real characters. `em` scales the measure with the type size, so an 18px
+ * lead and 14px body both land near 70.
+ *
+ * The max-w-* utilities scattered through the pages were sized for a heading
+ * and then reused for paragraphs, so 14px body copy ran to 100+ characters on
+ * a 1280px screen. The attribute selector is deliberate: it gives this
+ * (0,1,1), enough to beat a `max-w-3xl` class at (0,1,0), because the whole
+ * point is to override those. `min(…, 100%)` keeps it from ever forcing a
+ * horizontal scroll inside a narrow container.
+ *
+ * Scoped to <main>: the shell's nav, and anything that is a label rather than
+ * prose, is untouched.
+ */
+main :is(p, li)[class],
+/* …and the ones with no class at all, which inherit their width from a
+   max-w-3xl wrapper and were the widest lines on the site. */
+main :is(p, li):not([class]) {
+  max-width: min(var(--measure), 100%);
+}
+
+/* A capped paragraph that was centred has to stay centred — otherwise the cap
+   silently left-aligns it. */
+main :is(p, li)[class].text-center,
+main .text-center > :is(p, li)[class] {
+  margin-inline: auto;
+}
+
+/* Table cells, badges and buttons are not prose. A cap there would fight the
+   column widths that the table layout already decides. */
+main :is(td, th, button, [class*="rounded-pill"]) :is(p, li)[class],
+main :is(td, th) {
+  max-width: none;
 }

@@ -152,7 +152,7 @@ export default function SiteReadinessPage() {
             <Link href="/registry" className="inline-flex items-center gap-1 text-sm text-teal-deep">
               View on registry <ArrowRight className="h-3.5 w-3.5" />
             </Link>
-            <button onClick={submit} disabled={submitting || !hydrated} className="text-xs text-muted underline underline-offset-2 hover:text-ink-2 disabled:opacity-60">
+            <button onClick={submit} disabled={submitting || !hydrated} aria-busy={submitting} className="text-xs text-muted underline underline-offset-2 hover:text-ink-2 disabled:opacity-60">
               {submitting ? "Updating…" : "Update listing"}
             </button>
           </div>
@@ -160,6 +160,7 @@ export default function SiteReadinessPage() {
           <button
             onClick={submit}
             disabled={submitting || !hydrated}
+            aria-busy={submitting}
             className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-teal-deep px-3.5 py-2 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             <Upload className="h-4 w-4" /> {submitting ? "Submitting…" : "Submit readiness to the registry"}

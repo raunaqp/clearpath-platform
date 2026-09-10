@@ -47,7 +47,7 @@ export function SiteMatches({
   }, [card, toolName]);
 
   return (
-    <section className="mt-6 rounded-xl border border-line bg-bg-card p-5">
+    <section className="mt-6 rounded-xl border border-line bg-bg-card px-5 py-4">
       <h2 className="font-serif text-lg text-ink">Where this fits, and where it does not</h2>
       <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
         Matched on the card&apos;s declared context against each site&apos;s own operating profile

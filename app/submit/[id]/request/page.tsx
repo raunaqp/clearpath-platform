@@ -251,6 +251,7 @@ export default function RequestPage() {
         <button
           onClick={send}
           disabled={busy}
+          aria-busy={busy}
           className={cn(
             "inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white transition-opacity hover:opacity-90",
             busy && "opacity-50"

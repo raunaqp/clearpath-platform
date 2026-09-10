@@ -81,7 +81,7 @@ export function ApplicationList({
                   <p className="text-sm text-ink">{row.tool?.name}</p>
                   <p className="text-xs text-muted">Skipped — {row.submission.skipReason}</p>
                 </div>
-                <button onClick={() => onUnskip(row)} disabled={busy === row.submission.id} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-xs text-ink-2 hover:bg-bg-sink disabled:opacity-60">
+                <button onClick={() => onUnskip(row)} disabled={busy === row.submission.id} aria-busy={busy === row.submission.id} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-xs text-ink-2 hover:bg-bg-sink disabled:opacity-60">
                   <Undo2 className="h-3.5 w-3.5" /> Un-skip
                 </button>
               </li>
@@ -146,7 +146,7 @@ function ApplicationRow({ row, busy, onSkip }: { row: Row; busy: boolean; onSkip
             </Link>
           )}
           {canSkip && (
-            <button onClick={onSkip} disabled={busy} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs text-ink-2 hover:bg-bg-sink disabled:opacity-60">
+            <button onClick={onSkip} disabled={busy} aria-busy={busy} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs text-ink-2 hover:bg-bg-sink disabled:opacity-60">
               <SkipForward className="h-3.5 w-3.5" /> Skip
             </button>
           )}

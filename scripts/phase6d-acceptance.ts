@@ -55,7 +55,7 @@ const overlaps = HOSPITAL_GATE_ORDER.map((h) => HOSPITAL_GATES[h].vendorGate).fi
 eq("no vendor gate is claimed by two hospital gates", overlaps.length, new Set(overlaps).size);
 ok("every mapped vendor gate exists", overlaps.every((g) => TOOL_GATE_ORDER.includes(g!)));
 
-const audit = buildNorthvaleAudit("cerviai");
+const audit = buildNorthvaleAudit("cerviai")!;
 eq("tally is 12 pass · 2 conditional of 14", [audit.tally.pass, audit.tally.conditional, audit.tally.total], [12, 2, 14]);
 const div = buildDivergences("cerviai");
 ok("the consent divergence is on the CONSENT row",
