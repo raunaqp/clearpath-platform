@@ -196,12 +196,24 @@ eq("an untouched submission still derives 'New'",
 section("6. The innovator no longer writes into a hospital inbox");
 // ═════════════════════════════════════════════════════════════════════════
 
-const applicable = readFileSync("components/card/ApplicableHospitals.tsx", "utf8");
-ok("submitToHospital is not called from the innovator surface", !applicable.includes("submitToHospital("));
-ok("the action goes to interest", applicable.includes("/interest"));
-ok("the 'landed in the inbox' claim is gone", !applicable.includes("inbox as"));
-ok("the matching screen routes to ClearPath",
-  readFileSync("components/registry/SiteMatches.tsx", "utf8").includes("Express interest to ClearPath"));
+/**
+ * ApplicableHospitals.tsx was the second matching UI on the card page and is
+ * deleted — SiteMatches is the one that survives. These checks now read the
+ * whole innovator card surface rather than that one file, which is strictly
+ * stronger: the claim has to be absent everywhere, not just where it lived.
+ */
+const cardSurface = [
+  "app/submit/[id]/card/page.tsx",
+  "components/registry/SiteMatches.tsx",
+  "components/registry/MatchBreakdown.tsx",
+  "components/card/RegistryListing.tsx",
+].map((f) => readFileSync(f, "utf8")).join("\n");
+ok("submitToHospital is not called from the innovator surface", !cardSurface.includes("submitToHospital("));
+ok("the action goes to interest", cardSurface.includes("/interest"));
+ok("the 'landed in the inbox' claim is gone", !cardSurface.includes("inbox as"));
+ok("the matching screen routes to ClearPath", cardSurface.includes("Express interest to ClearPath"));
+ok("only one matching UI is mounted on the card page",
+  !readFileSync("app/submit/[id]/card/page.tsx", "utf8").includes("ApplicableHospitals"));
 
 resetHandoff();
 console.log(`\nPHASE 5 ACCEPTANCE ${fail === 0 ? "PASSED" : "FAILED"} — ${pass} passed, ${fail} failed`);
