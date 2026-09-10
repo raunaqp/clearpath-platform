@@ -46,12 +46,20 @@ export default function AssessPage() {
   const [view, setView] = useState<CardV2View | null>(null);
   const [run, setRun] = useState<AssessmentRun | null>(null);
   const [done, setDone] = useState(0);
+  /**
+   * Distinct from "still loading". Without it, a slug with no card left this
+   * page on a spinner forever — a permanent loading state is the worst possible
+   * rendering of "there is nothing here", because it tells a reader to wait for
+   * something that is never coming.
+   */
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     let live = true;
     (async () => {
       const v = await getCardV2(id);
-      if (!live || !v) { setView(null); return; }
+      if (!live) return;
+      if (!v) { setView(null); setNotFound(true); return; }
       // One resolver for both a wizard-built submission and a seeded fixture,
       // so this screen and the card cannot disagree about what was declared.
       const declaration =
@@ -92,6 +100,19 @@ export default function AssessPage() {
     return () => clearTimeout(t);
   }, [stages.length, done]);
 
+  if (notFound) {
+    return (
+      <div className="mx-auto max-w-lg space-y-3 py-16 text-center">
+        <p className="font-serif text-xl text-ink">No assessment found</p>
+        <p className="text-sm leading-relaxed text-muted">
+          Nothing has been submitted under &ldquo;{id}&rdquo;.
+        </p>
+        <Link href="/submit" className="inline-block text-sm text-teal-deep">
+          Start a new assessment →
+        </Link>
+      </div>
+    );
+  }
   if (!view || !run) {
     return (
       <div className="flex justify-center py-24">

@@ -43,6 +43,30 @@ const click = (t) =>
     if (el) { el.click(); return true; }
     return false;
   }, t);
+/**
+ * Click, then verify it took — retrying if not.
+ *
+ * A plain click can land before React has hydrated: the button is in the
+ * server-rendered HTML but its handler is not attached yet, so the click is
+ * swallowed and the next wait times out somewhere unrelated. Idle, hydration is
+ * instant and this never shows; after a ninety-second suite on the same dev
+ * server it does. Retrying until the click has an observable effect is the
+ * honest fix — waiting on the condition rather than assuming the first attempt
+ * worked.
+ */
+async function clickUntil(text, predicate, { attempts = 5, gap = 1200 } = {}) {
+  for (let i = 0; i < attempts; i++) {
+    await click(text);
+    try {
+      await page.waitForFunction(predicate, { timeout: gap });
+      return true;
+    } catch {
+      // Not yet — hydration may still be in flight. Try again.
+    }
+  }
+  return false;
+}
+
 const setField = (placeholderPrefix, value) =>
   page.evaluate((ph, v) => {
     const el = [...document.querySelectorAll("input,textarea")].find((e) =>
@@ -65,8 +89,10 @@ try {
 
   console.log("\n── S1 · Context declaration ──");
   await page.goto(BASE + "/submit", { waitUntil: "networkidle2" });
-  await click("Begin");
-  await page.waitForSelector('input[placeholder^="e.g. CerviAI"]', { timeout: 8000 });
+  ok(
+    "the wizard opens (click retried until hydrated)",
+    await clickUntil("Begin", () => !!document.querySelector('input[placeholder^="e.g. CerviAI"]'))
+  );
   await page.type('input[placeholder^="e.g. CerviAI"]', "AcmeDerm");
   await page.type('input[placeholder^="e.g. CerviAI Health"]', "Acme Health");
   await setField("What the tool does", "Flags suspicious skin lesions for dermatology referral, in adults screened at CHC level by a staff nurse.");
@@ -153,7 +179,11 @@ try {
   ok("declarations exceeding the evidence are counted", /declarations? exceed what the attached evidence currently shows/.test(t));
 
   console.log("\n── S5 · Assessment transition ──");
-  const submitted = await click("Submit for assessment");
+  const submitted = await clickUntil(
+    "Submit for assessment",
+    () => location.pathname.includes("/assess"),
+    { attempts: 4, gap: 6000 }
+  );
   ok("submit button was clickable", submitted);
   try {
     await page.waitForFunction(() => location.pathname.includes("/assess"), { timeout: 20000 });
@@ -166,10 +196,17 @@ try {
   // The stages resolve one at a time over roughly three seconds. Wait for the
   // LAST one to land rather than sleeping a guessed interval — a fixed sleep
   // races the staged animation and fails intermittently.
-  await page.waitForFunction(
-    () => /evidence coverage/i.test(document.body.innerText),
-    { timeout: 20000 }
-  );
+  try {
+    await page.waitForFunction(
+      () => /evidence coverage/i.test(document.body.innerText),
+      { timeout: 25000 }
+    );
+  } catch {
+    console.log("DEBUG assess url:", await page.evaluate(() => location.pathname));
+    console.log("DEBUG assess page:\n", (await txt()).slice(0, 700));
+    console.log("DEBUG errors:", errors.join(" | "));
+    throw new Error("assess stages never resolved");
+  }
   await wait(400);
   t = await txt();
   ok("three resolving stages", t.includes("to gates and items") && t.includes("Checking declaration against evidence") && t.includes("Scoring against the 17 demo gates"));

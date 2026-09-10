@@ -55,6 +55,7 @@ const SUITES = [
   { key: "phase3", label: "Phase 3 · innovator front half", kind: "engine", cmd: ["tsx", "scripts/phase3-acceptance.ts"] },
   { key: "phase4", label: "Phase 4 · migration, listing, matching", kind: "engine", cmd: ["tsx", "scripts/phase4-acceptance.ts"] },
   { key: "phase5", label: "Phase 5 · ClearPath handoff", kind: "engine", cmd: ["tsx", "scripts/phase5-acceptance.ts"] },
+  { key: "phase6a", label: "Phase 6a · hospital front half", kind: "engine", cmd: ["tsx", "scripts/phase6a-acceptance.ts"] },
   { key: "browser", label: "Site-wide browser suite", kind: "browser", cmd: ["node", "scripts/browser-verify.mjs"] },
   { key: "phase3-browser", label: "Phase 3 · fresh submission journey", kind: "browser", cmd: ["node", "scripts/phase3-browser.mjs"] },
   { key: "phase5-browser", label: "Phase 5 · handoff journey", kind: "browser", cmd: ["node", "scripts/phase5-browser.mjs"] },
@@ -184,6 +185,11 @@ for (const r of failed) {
   // trace alone does not say which assertion was next.
   if (marks.length) console.log(`  last steps:\n${marks.slice(-6).map((l) => `    ${l}`).join("\n")}`);
   if (failures.length) console.log(`  failures:\n${failures.slice(0, 25).map((l) => `    ${l}`).join("\n")}`);
+  const debug = r.out.split("\n").filter((l) => /^DEBUG/.test(l) || /^\s{2,}\S/.test(l) && /DEBUG/.test(r.out));
+  const dbg = r.out.split("\n");
+  const firstDebug = dbg.findIndex((l) => /^DEBUG/.test(l));
+  if (firstDebug >= 0) console.log(`  debug:\n${dbg.slice(firstDebug, firstDebug + 14).map((l) => `    ${l}`).join("\n")}`);
+  void debug;
   const errs = r.out.split("\n").filter((l) => /Error|error TS|Timeout|at file:/.test(l)).slice(0, 6);
   if (errs.length) console.log(`  error:\n${errs.map((l) => `    ${l.trim()}`).join("\n")}`);
 }
