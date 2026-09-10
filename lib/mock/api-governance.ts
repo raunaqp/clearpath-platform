@@ -40,7 +40,7 @@ export function buildDivergences(slug: string) {
   const resolved = resolveAll({
     path: "PUBLIC",
     scores: new Map(),
-    selfDeclaration: declaration,
+    evidence: view.evidence,
   });
   const audit = buildNorthvaleAudit(slug);
   if (!audit) return [];

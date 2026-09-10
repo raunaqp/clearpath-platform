@@ -19,14 +19,14 @@ import { cn } from "@/lib/utils";
  * What is left is two halves, and the vendor asserts nothing in either:
  *
  *   WHAT YOU ATTACHED   the documents, and the gates each one answers.
- *   WHAT WE FOUND       gates the documents establish ON THEIR OWN, and gates
- *                       nothing on file speaks to.
+ *   WHAT WE FOUND       gates the documents establish, and gates nothing on
+ *                       file speaks to.
  *
- * "On their own" is load-bearing, not hedging. This screen reads ONLY the
- * attachments. The assessment that follows also weighs prior assessor scores
- * and adjudications where a submission has them, so a gate listed here as not
- * established can still clear on the card. Saying "not established" flatly
- * would set up a card that appears to contradict this screen.
+ * This screen and the card now agree by construction. It used to hedge —
+ * "establish on their own" — because the card could resolve a gate from the
+ * vendor's declared answer, so a gate unestablished here could still clear
+ * there. That fallback is gone: documents are what resolves a gate, and the
+ * hedge was describing a disagreement that no longer exists.
  *
  * Both halves are derived live from the attachments. The word "verdict" does
  * not appear — no assessment has happened yet, and this screen must not read
@@ -54,7 +54,7 @@ export function DeclarationSummary({ evidence }: { evidence: Evidence[] }) {
         </p>
         <p className="mt-1 text-sm leading-relaxed text-ink">
           {evidence.length} {evidence.length === 1 ? "document" : "documents"} ·{" "}
-          {established.length} of 17 gates established by the documents alone
+          {established.length} of 17 gates established
           {gaps.length > 0 && (
             <>
               {" · "}
@@ -107,21 +107,17 @@ export function DeclarationSummary({ evidence }: { evidence: Evidence[] }) {
       {/* ── What we found ─────────────────────────────────────────────────── */}
       <section className="space-y-2">
         <h3 className="font-serif text-lg text-ink">What we found</h3>
-        <p className="text-sm leading-relaxed text-muted">
-          Read from the attachments only. The assessment that follows also weighs anything an
-          assessor has already scored, so a gate listed below can still clear on the card.
-        </p>
 
         <div className="rounded-card border border-line bg-bg-card px-4 py-3">
           <p className="flex items-start gap-2 text-sm leading-relaxed text-ink">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#3B6D11]" aria-hidden />
             <span>
               {established.length === 0 ? (
-                "No gate is carried by the documents on file yet."
+                "No gate is established by the documents on file yet."
               ) : (
                 <>
-                  Your documents carry{" "}
-                  <span className="font-medium">{established.join(", ")}</span> on their own.
+                  Your documents establish{" "}
+                  <span className="font-medium">{established.join(", ")}</span>.
                 </>
               )}
             </span>

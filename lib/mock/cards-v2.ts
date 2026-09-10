@@ -369,7 +369,7 @@ function setupFor(slug: string): ToolSetup | undefined {
 }
 
 function scoredSetFor(setup: ToolSetup): ScoredSet {
-  return { path: "PUBLIC", scores: new Map(), selfDeclaration: setup.declaration };
+  return { path: "PUBLIC", scores: new Map(), evidence: setup.evidence };
 }
 
 // ═════════════════════════════════════════════════════════════════════════

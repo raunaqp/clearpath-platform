@@ -5,10 +5,16 @@
  *   adjudicated            a lead assessor resolved a disagreement. Final.
  *   mean(assessorScores)   human assessors, rounded to the ladder.
  *   aiScore.level          the AI's read.
- *   selfDeclared           the vendor's own 17-gate answer. Weakest input,
- *                          and it is a CLAIM — used only where nobody has
- *                          looked yet, never to overrule someone who has.
+ *   evidence               what the DOCUMENTS bound to the item establish.
  *   UNSCORED               nobody established this.
+ *
+ * THERE IS NO SELF-DECLARED RUNG, AND THAT IS THE POINT.
+ * It used to sit between the AI and UNSCORED: the vendor's own answer to a
+ * 17-gate questionnaire, used "only where nobody has looked yet". In practice
+ * nobody had looked at almost anything — every seeded card resolved fifteen of
+ * its seventeen gates from that answer — so the engine was self-certifying
+ * underneath a UI that had stopped. A card is a claim about what documents
+ * show; a gate nothing documents reaches now comes back UNSCORED and says so.
  *
  * UNSCORED IS NOT ZERO.
  * It is `null` everywhere in this file and it never coerces to 0. "We could
@@ -20,8 +26,9 @@
  */
 
 import type { AssessmentItem } from "@/lib/schemas/item";
+import type { Evidence } from "@/lib/schemas/evidence";
 import type { DimensionId } from "@/lib/schemas/readiness-card";
-import type { ItemScore, Level, SelfDeclaration } from "@/lib/schemas/score";
+import type { ItemScore, Level } from "@/lib/schemas/score";
 import { activeItems, itemsForDimension, itemsForPath } from "./item-bank";
 
 /** A resolved level, or null for UNSCORED. Never 0-for-missing. */
@@ -38,8 +45,43 @@ function toLevel(mean: number): Level {
 export type FinalInput = {
   item: AssessmentItem;
   score?: ItemScore;
-  selfDeclaration?: SelfDeclaration;
+  /** Every document on the submission. Only those bound to this item count. */
+  evidence?: Evidence[];
 };
+
+/**
+ * What the DOCUMENTS bound to an item establish, on the 0-2 ladder.
+ *
+ *   null   nothing is bound. Nobody established this either way, and that is
+ *          reported as an absence rather than a failing.
+ *   0      everything bound has LAPSED. There was evidence; there is not now.
+ *          This is the only route to zero from documents, because zero is an
+ *          assessed finding and an expired licence is exactly that.
+ *   1      evidence exists but cannot carry the item alone — either it was
+ *          generated somewhere this deployment is not, or every document that
+ *          does transfer is the claimant's own and states a limitation.
+ *   2      at least one document transfers to this context AND is either
+ *          independent of the claimant or carries no stated limitation.
+ *
+ * A document generated elsewhere is deliberately 1, not 0: it is real evidence
+ * that needs local support to carry, which is what "requires support" means.
+ * Calling it 0 would turn a transferability question into an accusation.
+ */
+export function evidenceLevel(itemId: string, evidence: Evidence[]): FinalLevel {
+  const bound = evidence.filter((e) => e.itemRefs.includes(itemId));
+  if (bound.length === 0) return UNSCORED;
+
+  const live = bound.filter((e) => !e.expired);
+  if (live.length === 0) return 0;
+
+  const transfers = live.filter((e) => !e.generalisability.limited);
+  if (transfers.length === 0) return 1;
+
+  const standsAlone = transfers.filter(
+    (e) => e.independence !== "VENDOR_GENERATED" || e.limitation === null
+  );
+  return standsAlone.length > 0 ? 2 : 1;
+}
 
 /**
  * Resolve one item to a final level.
@@ -48,7 +90,7 @@ export type FinalInput = {
  * authored text cannot have been assessed against, so a score on one is a data
  * error rather than a finding, and it must not reach a denominator.
  */
-export function final({ item, score, selfDeclaration }: FinalInput): FinalLevel {
+export function final({ item, score, evidence }: FinalInput): FinalLevel {
   if (item.status !== "active" || item.text === null) return UNSCORED;
 
   if (score) {
@@ -62,12 +104,7 @@ export function final({ item, score, selfDeclaration }: FinalInput): FinalLevel 
     if (score.aiScore) return score.aiScore.level;
   }
 
-  if (selfDeclaration && item.legacyGateId) {
-    const declared = selfDeclaration.gateAnswers[
-      item.legacyGateId as keyof typeof selfDeclaration.gateAnswers
-    ];
-    if (declared !== undefined) return declared;
-  }
+  if (evidence && evidence.length > 0) return evidenceLevel(item.id, evidence);
 
   return UNSCORED;
 }
@@ -77,22 +114,17 @@ export type ScoreSource =
   | "adjudicated"
   | "assessor"
   | "ai"
-  | "self_declared"
+  | "evidence"
   | "unscored";
 
-export function finalSource({ item, score, selfDeclaration }: FinalInput): ScoreSource {
+export function finalSource({ item, score, evidence }: FinalInput): ScoreSource {
   if (item.status !== "active" || item.text === null) return "unscored";
   if (score) {
     if (score.adjudicated !== null && score.adjudicated !== undefined) return "adjudicated";
     if (score.assessorScores.length > 0) return "assessor";
     if (score.aiScore) return "ai";
   }
-  if (selfDeclaration && item.legacyGateId) {
-    const declared = selfDeclaration.gateAnswers[
-      item.legacyGateId as keyof typeof selfDeclaration.gateAnswers
-    ];
-    if (declared !== undefined) return "self_declared";
-  }
+  if (evidence && evidenceLevel(item.id, evidence) !== UNSCORED) return "evidence";
   return "unscored";
 }
 
@@ -103,7 +135,8 @@ export function finalSource({ item, score, selfDeclaration }: FinalInput): Score
 export type ScoredSet = {
   path: "PUBLIC" | "PRIVATE";
   scores: Map<string, ItemScore>;
-  selfDeclaration?: SelfDeclaration;
+  /** The submission's documents. The last resort before UNSCORED. */
+  evidence?: Evidence[];
 };
 
 /** Resolve every item on the path. Stubs come back UNSCORED by construction. */
@@ -112,7 +145,7 @@ export function resolveAll(set: ScoredSet): Map<string, FinalLevel> {
   for (const item of itemsForPath(set.path)) {
     out.set(
       item.id,
-      final({ item, score: set.scores.get(item.id), selfDeclaration: set.selfDeclaration })
+      final({ item, score: set.scores.get(item.id), evidence: set.evidence })
     );
   }
   return out;

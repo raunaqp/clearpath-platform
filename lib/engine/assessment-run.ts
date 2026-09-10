@@ -217,11 +217,22 @@ export function runAssessment(input: AssessmentRunInput): AssessmentRun {
       unsupported.add(item.legacyGateId ?? c.itemId);
     }
   }
-  // Only the BLOCKING no-evidence gates route to a human. A gate outside those
-  // clusters with nothing on file is reported on the summary and leaves the
-  // card silent on it; it is not a reason to hold the submission.
+  /**
+   * EVERY gate with nothing on file, not only the trial-blocking ones.
+   *
+   * This used to be narrowed to the blocking clusters because a gate could
+   * still resolve from the vendor's declared answer, so "no document" did not
+   * mean "not established" — most gates had a level regardless. That fallback
+   * is gone: a gate with nothing bound now comes back UNSCORED and the card
+   * says so. "Unsupported gates" and "gates this assessment could not
+   * establish" are therefore the same set, and holding for an assessor on
+   * exactly that set is what makes the two agree.
+   *
+   * `blocking` survives as ORDERING — which gate an assessor is asked about
+   * first — not as membership.
+   */
   for (const g of gateGaps) {
-    if (g.kind === "NO_EVIDENCE" && g.blocking) unsupported.add(g.gateId);
+    if (g.kind === "NO_EVIDENCE") unsupported.add(g.gateId);
   }
 
   const unsupportedGates = [...unsupported];
