@@ -217,6 +217,17 @@ export const DeploymentRequestSchema = z.object({
   cardVersion: z.string(),
 
   mode: z.enum(["trial", "deployment"]),
+  /**
+   * The register entry this claims to address, by id.
+   *
+   * Hospital intake needs to name it — a request that says "cervical screening"
+   * in prose cannot be checked against the register the site actually
+   * published, and the site is the only party entitled to say what its
+   * priorities are. Nullable because a request may legitimately address
+   * something the site has not ranked; that is a finding for intake, not a
+   * reason to refuse the request.
+   */
+  problemRegisterEntryId: z.string().nullable(),
   /** The single question the engagement answers. */
   question: z.string(),
   scope: z.object({

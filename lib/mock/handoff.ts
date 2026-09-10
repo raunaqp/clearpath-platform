@@ -19,6 +19,7 @@ import type {
 import { FACILITATION_ORDER } from "@/lib/schemas/handoff";
 import { getCardV2 } from "./cards-v2";
 import { getSiteProfile, getProblemRegister } from "./fixtures/site-profiles";
+import { findProblem } from "@/lib/match";
 import { HOSPITALS } from "./fixtures/hospitals";
 import { getItem } from "@/lib/engine/item-bank";
 
@@ -254,7 +255,7 @@ export type CreateRequestInput = Omit<
   DeploymentRequest,
   | "id" | "facilitationId" | "toolId" | "slug" | "toolName" | "hospitalId"
   | "hospitalName" | "cardId" | "cardVersion" | "status" | "createdAt"
-  | "sentAt" | "hospitalResponse" | "conditionPlans"
+  | "sentAt" | "hospitalResponse" | "conditionPlans" | "problemRegisterEntryId"
 > & {
   slug: string;
   /** Plans keyed by item id — every open condition must have one. */
@@ -310,6 +311,10 @@ export function createDeploymentRequest(input: CreateRequestInput): DeploymentRe
     cardId: view.card.id,
     cardVersion: `v1.${view.card.version - 1}`,
     mode: input.mode,
+    // DERIVED, not passed in — from the same function the matching screen and
+    // the facilitation pack use, so all three name the same entry.
+    problemRegisterEntryId:
+      findProblem(getProblemRegister(facilitation.hospitalId), view.card.context.exactClaim, view.tool.name)?.id ?? null,
     question: input.question,
     scope: input.scope,
     supportTaper: input.supportTaper,

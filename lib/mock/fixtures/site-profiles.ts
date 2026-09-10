@@ -77,6 +77,7 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
     publishedAt: PROBLEM_REGISTER_PUBLISHED_AT,
     entries: [
       {
+        id: "pr-northvale-tb-case-finding",
         rank: 1,
         name: "Tuberculosis case finding",
         volumePerYear: 5200,
@@ -84,6 +85,7 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
         currentMetric: "9-day mean time to confirmation",
       },
       {
+        id: "pr-northvale-cervical-screening",
         rank: 2,
         name: "Cervical screening",
         volumePerYear: 3400,
@@ -91,6 +93,7 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
         currentMetric: "11-day mean colposcopy turnaround",
       },
       {
+        id: "pr-northvale-diabetic-retinopathy",
         rank: 3,
         name: "Diabetic retinopathy screening",
         volumePerYear: 2100,
@@ -98,6 +101,7 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
         currentMetric: "22-day mean ophthalmology referral",
       },
       {
+        id: "pr-northvale-antenatal-anaemia",
         rank: 4,
         name: "Antenatal anaemia",
         volumePerYear: 4800,
@@ -111,6 +115,7 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
     publishedAt: PROBLEM_REGISTER_PUBLISHED_AT,
     entries: [
       {
+        id: "pr-site-b-tb-case-finding",
         rank: 1,
         name: "Tuberculosis case finding",
         volumePerYear: 1900,
@@ -118,6 +123,7 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
         currentMetric: "14-day mean time to confirmation",
       },
       {
+        id: "pr-site-b-hypertension-follow-up",
         rank: 2,
         name: "Hypertension follow-up",
         volumePerYear: 3100,
@@ -132,12 +138,14 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
     publishedAt: PROBLEM_REGISTER_PUBLISHED_AT,
     entries: [
       {
+        id: "pr-lakeview-embryo-selection",
         rank: 1,
         name: "Embryo selection consistency",
         volumePerYear: 900,
         currentPathway: "Manual morphology grading by two embryologists.",
       },
       {
+        id: "pr-lakeview-ovarian-reserve",
         rank: 2,
         name: "Ovarian reserve prediction",
         volumePerYear: 1400,

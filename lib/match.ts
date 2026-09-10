@@ -145,8 +145,16 @@ function fmt(iso: string): string {
     : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-/** Which register entry, if any, this tool's claim speaks to. */
-function findProblem(register: ProblemRegister | undefined, claim: string, toolName: string): ProblemEntry | undefined {
+/**
+ * Which register entry, if any, this tool's claim speaks to.
+ *
+ * EXPORTED because three surfaces need the same answer: the matching screen
+ * ("ranked #2 on the problem register"), the facilitation introduction pack
+ * ("the problem-register entry it addresses"), and the deployment request,
+ * which names the entry id so hospital intake can look it up. Deriving it three
+ * ways would let those three disagree about what the tool claims to address.
+ */
+export function findProblem(register: ProblemRegister | undefined, claim: string, toolName: string): ProblemEntry | undefined {
   if (!register) return undefined;
   const haystack = `${claim} ${toolName}`.toLowerCase();
   return register.entries.find((e) =>

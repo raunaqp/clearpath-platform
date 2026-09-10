@@ -62,6 +62,15 @@ export type SiteOperatingProfile = z.infer<typeof SiteOperatingProfileSchema>;
  * lets every tool claim to address something.
  */
 export const ProblemEntrySchema = z.object({
+  /**
+   * Stable id, independent of rank.
+   *
+   * A deployment request names the entry it claims to address, and rank is
+   * exactly the field a site re-orders when its priorities move — so a request
+   * that pointed at "#2" would silently come to mean something else the first
+   * time the register was revised.
+   */
+  id: z.string(),
   rank: z.number(),
   name: z.string(),
   /** Annual volume the site sees. */

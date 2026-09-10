@@ -15,6 +15,9 @@ import {
 import { getCardV2 } from "@/lib/mock/api";
 import type { CardV2View } from "@/lib/mock/cards-v2";
 import { getItem } from "@/lib/engine/item-bank";
+import { findProblem } from "@/lib/match";
+import { getProblemRegisters } from "@/lib/mock/api-registry";
+import type { ProblemEntry } from "@/lib/schemas/site-profile";
 import { cn } from "@/lib/utils";
 
 /**
@@ -51,19 +54,25 @@ export default function RequestPage() {
   const [existing, setExisting] = useState<DeploymentRequest | null>(null);
   const [hospitalName, setHospitalName] = useState("");
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [problem, setProblem] = useState<ProblemEntry | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
     (async () => {
-      const [open, v, req, f] = await Promise.all([
+      const [open, v, req, f, registers] = await Promise.all([
         isRequestFormOpen(id),
         getCardV2(id),
         getDeploymentRequest(id),
         getFacilitation(id),
+        getProblemRegisters(),
       ]);
       if (!live) return;
+      // The same mapper matching and the facilitation pack use, so all three
+      // name the same register entry.
+      const register = registers.find((r) => r.hospitalId === f?.hospitalId);
+      setProblem(v ? findProblem(register, v.card.context.exactClaim, v.tool.name) ?? null : null);
       setView(v ?? null);
       setExisting(req ?? null);
       setHospitalName(f?.hospitalName ?? "");
@@ -172,6 +181,20 @@ export default function RequestPage() {
         <Row label="Question">
           Does CerviAI-assisted VIA screening increase detection of referable abnormalities at CHC
           level without increasing nurse workload?
+        </Row>
+        <Row label="Addresses">
+          {problem ? (
+            <>
+              {problem.name} — ranked #{problem.rank} on {hospitalName}&apos;s problem register,{" "}
+              {problem.volumePerYear.toLocaleString("en-IN")} per year
+              <span className="ml-1.5 font-mono text-xs text-muted">{problem.id}</span>
+            </>
+          ) : (
+            <span className="text-muted">
+              Nothing on this site&apos;s register matches the claim. Intake will see that stated
+              rather than left blank.
+            </span>
+          )}
         </Row>
         <Row label="Scope">4 CHCs · 90 days · 1,000 women · staff nurse operators</Row>
         <Row label="Support taper">
