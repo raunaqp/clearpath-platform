@@ -128,70 +128,84 @@ try {
     return a ? { href: a.getAttribute("href"), text: a.textContent.trim().toLowerCase() } : null;
   });
   ok("closing call is a mailto (no form on home)", homeMail?.href === "mailto:raunaq.pradhan@gmail.com" && /readiness assessment/.test(homeMail?.text ?? ""), JSON.stringify(homeMail));
-  // §4 on-ramp: the link text is now "Start there", not "regulatory journey".
-  const homeReg = await regLink(page, "start there");
-  ok("home regulatory on-ramp → clearpath-medtech, new tab", regOk(homeReg), homeReg ? homeReg.href : "MISSING");
-  // Entry cards replace the old three doors: two anchor into this page, the
-  // marketplace card routes to the directory. All three must be real links.
+  // The three entry cards are now ROUTES, not in-page anchors. Each one is its
+  // own scrollable sub-page; nothing expands in place on home any more.
   const cards = await page.evaluate(() => ({
-    hospitals: !!document.querySelector('a[href="#for-hospitals"]'),
-    innovators: !!document.querySelector('a[href="#for-innovators"]'),
+    hospitals: !!document.querySelector('a[href="/for-hospitals"]'),
+    innovators: !!document.querySelector('a[href="/for-innovators"]'),
     marketplace: !!document.querySelector('a[href="/registry"]'),
-    targets: !!document.querySelector("#for-hospitals") && !!document.querySelector("#for-innovators"),
+    anchors: !!document.querySelector('a[href^="#for-"]'),
+    panels: !!document.querySelector("#for-hospitals") || !!document.querySelector("#for-innovators"),
   }));
-  ok("entry card → For hospitals anchors into §3", cards.hospitals);
-  ok("entry card → For innovators anchors into §4", cards.innovators);
+  ok("entry card → For hospitals routes to its own page", cards.hospitals);
+  ok("entry card → For innovators routes to its own page", cards.innovators);
   ok("entry card → The marketplace routes to the directory", cards.marketplace);
-  ok("both in-page anchor targets exist", cards.targets);
+  ok("no in-page anchors and nothing expands on home", !cards.anchors && !cards.panels);
+  ok("home does not carry the sub-page bodies", !t.includes("stop running pilots that go nowhere") && !t.includes("audit trail and scorecard"));
 
-  console.log("\n── §3 hospital accordion: collapsed by default, one open at a time ──");
-  ok("§3 heading", t.includes("stop running pilots that go nowhere"));
-  ok("four item headers visible", t.includes("discover and compare") && t.includes("check your site readiness") && t.includes("deploy and test") && t.includes("audit trail and scorecard"));
-  ok("collapsed by default (no panel copy showing)", !t.includes("via india's first vendor-neutral ai marketplace"));
-  // Each of the four demos wires a REAL product component to the mock api, so
-  // every box arrives after simulated latency — waitText each one, never sleep
-  // and hope. The assertions pair the frame's caption with content only that
-  // component renders, so swapping in a mock would fail the check.
-  await clickText(page, "Discover and compare");
-  await sleep(300);
+  console.log("\n── /for-hospitals: four numbered steps, each with a live product preview ──");
+  await goto(page, "/for-hospitals");
   t = await body(page);
-  ok("expands on click", t.includes("via india's first vendor-neutral ai marketplace"));
-  // §3.1 — DirectoryDemo → the real <RegistryTable>. "cdsco class" is a column
-  // header that appears nowhere else on home, so it can only come from the table.
+  ok("wears the PUBLIC header, signed out", (await navText(page)).includes("about") && !(await navText(page)).includes("inbox"));
+  ok("hero", t.includes("stop running pilots that go nowhere"));
+  ok("four numbered steps, in order", ["step 01", "step 02", "step 03", "step 04"].every((x) => t.includes(x)));
+  ok("four step titles", t.includes("discover and compare") && t.includes("check your site readiness") && t.includes("deploy and test") && t.includes("audit trail and scorecard"));
+  // NOTHING is collapsed here — the whole point of the sub-page is that a
+  // reader gets all four steps by scrolling, not by four clicks. Asserted as
+  // "all four bodies are on screen at once", not "no [aria-expanded] exists":
+  // the shell's own Login-as menu carries that attribute.
+  ok("all four step bodies are visible at once, nothing to expand",
+    t.includes("needs validation and compatibility fit")
+      && t.includes("what level of health system readiness is needed")
+      && t.includes("in a sandbox environment")
+      && t.includes("never a composite score")
+      && !(await page.evaluate(() => !!document.querySelector("main [aria-expanded]"))));
+  // Each demo wires a REAL product component to the mock api, so every box
+  // arrives after simulated latency — waitText each one, never sleep and hope.
+  // The assertions pair the frame's caption with content only that component
+  // renders, so swapping in a mock would fail the check.
+
+  // 01 — DirectoryDemo → the real <RegistryTable>. "cdsco class" is a column
+  // header that appears nowhere else on the page, so it can only come from it.
   const demo1 = await waitText(page, "cdsco class");
   t = await body(page);
-  ok("§3.1 demo renders the real registry table", demo1 && t.includes("marketplace directory · assessed tools") && t.includes("cdsco class"));
+  ok("step 01 demo renders the real registry table", demo1 && t.includes("marketplace directory · assessed tools") && t.includes("cdsco class"));
 
-  // §3.2 — SiteReadinessDemo → the real <SiteReadinessPanel>, read-only, seeded
+  // 02 — SiteReadinessDemo → the real <SiteReadinessPanel>, read-only, seeded
   // from the Northvale fixture. All six domain labels must be present: the box
   // is captioned "six domains" and has to actually show six.
-  await clickText(page, "Check your site readiness");
-  await sleep(400);
-  t = await body(page);
-  ok("one open at a time (first item closed)", !t.includes("via india's first vendor-neutral ai marketplace"));
   const demo2 = await waitText(page, "governance & ethics");
   t = await body(page);
-  ok("§3.2 demo renders the real site-readiness panel (all six domains)", demo2 && t.includes("site readiness · six domains") && t.includes("site grade") && t.includes("governance & ethics") && t.includes("people & training") && t.includes("infrastructure & it") && t.includes("data & documentation") && t.includes("regulatory & quality") && t.includes("patient access"));
+  ok("step 02 demo renders the real site-readiness panel (all six domains)", demo2 && t.includes("site readiness · six domains") && t.includes("site grade") && t.includes("governance & ethics") && t.includes("people & training") && t.includes("infrastructure & it") && t.includes("data & documentation") && t.includes("regulatory & quality") && t.includes("patient access"));
 
-  // §3.3 — MonitoringDemo → the real monitoring dashboard.
-  await clickText(page, "Deploy and test");
-  await sleep(400);
-  const demoUp = await waitText(page, "drift — data & prediction");
+  // 03 — MonitoringDemo → the real monitoring dashboard.
+  const demo3 = await waitText(page, "drift — data & prediction");
   t = await body(page);
-  ok("§3.3 demo renders the real monitoring dashboard", demoUp && t.includes("monitoring · governance dashboard") && t.includes("performance by subgroup"));
+  ok("step 03 demo renders the real monitoring dashboard", demo3 && t.includes("monitoring · governance dashboard") && t.includes("performance by subgroup"));
 
-  // §3.4 — AssessDemo → the real <ApplicationList>, grouped by category. The
-  // fixture spans several categories, so "screening" proves the grouping renders
-  // rather than a single ungrouped row.
-  await clickText(page, "Audit trail and scorecard");
-  await sleep(400);
-  // Wait on CONTENT, never on the frame's caption: ProductPreview renders its
-  // label immediately while the spinner is still up, so waiting on the label
-  // returns before the data lands. This demo is the slowest of the four — it
-  // resolves a tool + readiness card per submission — hence the longer timeout.
+  // 04 — AssessDemo → the real <ApplicationList>, grouped by category. The
+  // fixture spans several categories, so "screening" proves the grouping
+  // renders rather than a single ungrouped row. Slowest of the four: it
+  // resolves a tool + readiness card per submission, hence the longer timeout.
   const demo4 = await waitText(page, "cerviai", 20000);
   t = await body(page);
-  ok("§3.4 demo renders the real application list", demo4 && t.includes("assess tool applications · verdicts") && t.includes("screening") && t.includes("cerviai"));
+  ok("step 04 demo renders the real application list", demo4 && t.includes("assess tool applications · verdicts") && t.includes("screening") && t.includes("cerviai"));
+  // The preview build shows a 94/100 disc and a /3 maturity scale on this page.
+  // We removed both from the product, so neither may appear on a page whose
+  // whole claim is that it shows the real product.
+  ok("no composite disc or /3 scale (both deliberately removed)", !/\b94\s*\/\s*100\b/.test(t) && !/\b\d\s*\/\s*3\b/.test(t) && !t.includes("out of 100"));
+
+  console.log("\n── /for-innovators: its own page, same shape ──");
+  await goto(page, "/for-innovators");
+  t = await body(page);
+  ok("hero", t.includes("from readiness card to a hospital that'll run it"));
+  ok("sub-line", t.includes("calibrated readiness verdict") && t.includes("best-fit hospital"));
+  ok("numbered steps", t.includes("step 01") && t.includes("step 02") && t.includes("step 03"));
+  // §4 on-ramp: the link text is "Start there", not "regulatory journey".
+  const innoReg = await regLink(page, "start there");
+  ok("regulatory on-ramp → clearpath-medtech, new tab", regOk(innoReg), innoReg ? innoReg.href : "MISSING");
+  const innoResearch = await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /how we built the regulatory tool/i.test(a.textContent))?.getAttribute("href") ?? null);
+  ok("'How we built the regulatory tool' → /research", innoResearch === "/research", innoResearch ?? "MISSING");
 
   console.log("\n── /hospitals landing (reachable by URL; no longer linked from home) ──");
   await goto(page, "/hospitals");
@@ -487,9 +501,12 @@ try {
 
   console.log("\n── REGULATORY redirect guard (every intended spot → clearpath-medtech, new tab) ──");
   await signInAs(page, "vendor");
-  await goto(page, "/");
+  // The "Start there" on-ramp moved off home with the §4 section — it now
+  // lives on /for-innovators, which is where that section became a page.
+  await goto(page, "/for-innovators");
   const rHome = await regLink(page, "start there");
-  ok("home §4 regulatory link", regOk(rHome), rHome ? rHome.href : "MISSING");
+  ok("/for-innovators regulatory link", regOk(rHome), rHome ? rHome.href : "MISSING");
+  await goto(page, "/");
   const rNav = await regLink(page, "explore regulatory");
   ok("vendor nav 'Explore regulatory' link", regOk(rNav), rNav ? rNav.href : "MISSING");
   await clickText(page, "Login as");
@@ -603,13 +620,13 @@ try {
   // wears signed-out is the actual regression risk (a public page is only
   // "public" to the shell if isPublicRoute knows about it).
   await page.evaluate(() => localStorage.clear());
-  // Reachable from home §4 and /framework, never from the public nav.
-  await goto(page, "/");
+  // Reachable from /for-innovators and /framework, never from the public nav.
+  await goto(page, "/for-innovators");
   const rsLink = await page.evaluate(() => {
     const a = [...document.querySelectorAll("a")].find((e) => /how we built the regulatory tool/i.test(e.textContent));
     return a ? a.getAttribute("href") : null;
   });
-  ok("home §4 'How we built the regulatory tool' → /research", rsLink === "/research", rsLink ?? "MISSING");
+  ok("/for-innovators 'How we built the regulatory tool' → /research", rsLink === "/research", rsLink ?? "MISSING");
   const fwToResearch = await page.evaluate(async () => {
     const r = await fetch("/framework");
     const html = await r.text();

@@ -1,18 +1,11 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import Link from "next/link";
 import {
-  Building2, Boxes, Store, ArrowRight, ArrowUpRight, ChevronDown,
+  Building2, Boxes, Store, ArrowRight,
   ClipboardCheck, MapPin, Play, BadgeCheck,
 } from "lucide-react";
-import { REGULATORY_URL } from "@/lib/links";
-import { ProductPreview } from "@/components/home/ProductPreview";
-import { SiteReadinessDemo } from "@/components/home/SiteReadinessDemo";
-import { MonitoringDemo } from "@/components/home/MonitoringDemo";
-import { DirectoryDemo } from "@/components/home/DirectoryDemo";
-import { AssessDemo } from "@/components/home/AssessDemo";
-import { cn } from "@/lib/utils";
 
 /**
  * Public home (brief §2–§4). Presentation only — no routing, engine, or state
@@ -29,13 +22,13 @@ import { cn } from "@/lib/utils";
 /** [exact] — brief §2.2. All three are entry points with identical affordance. */
 const ENTRY_CARDS = [
   {
-    href: "#for-hospitals",
+    href: "/for-hospitals",
     icon: Building2,
     eyebrow: "For hospitals",
     body: "Discover, evaluate and deploy tools safely",
   },
   {
-    href: "#for-innovators",
+    href: "/for-innovators",
     icon: Boxes,
     eyebrow: "For innovators",
     body: "Identify your regulatory readiness first. Get your product evaluated",
@@ -125,9 +118,6 @@ export default function Home() {
 
       {/* §2.4 problem statement goes here once the copy exists (open q4). */}
 
-      <ForHospitals />
-      <ForInnovators />
-
       {/* How it works — the full arc: Assess → Place → Run → Prove */}
       <section className="space-y-6">
         <div className="flex items-baseline justify-between gap-4">
@@ -183,247 +173,5 @@ export default function Home() {
         </a>
       </section>
     </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
- * §3 "For hospitals" — four items, collapsed by default, one open at a time.
- * ───────────────────────────────────────────────────────────────────────── */
-
-/**
- * `demo` is the live product component for that step (brief §3). It is OPTIONAL
- * and genuinely absent on two items — see the note above HOSPITAL_ITEMS. An
- * item with no demo renders its copy full-width rather than showing an empty or
- * invented box.
- */
-type Item = {
-  id: string;
-  title: string;
-  body: React.ReactNode;
-  demo?: { label: string; height: number; scale?: number; node: React.ReactNode };
-};
-
-/**
- * All four steps now show a live product component. None of these are mocks or
- * screenshots — each is the same component the product renders, wired to the
- * same fixtures, so the demos stay true as the product changes.
- */
-const HOSPITAL_ITEMS: Item[] = [
-  {
-    id: "discover",
-    title: "Discover and compare",
-    body: (
-      <div className="space-y-4">
-        <p className="font-serif text-lg text-ink">Select products</p>
-        <p className="text-sm leading-relaxed text-ink-2">
-          Via India&apos;s first vendor-neutral AI marketplace for healthcare.
-        </p>
-        <p className="text-sm leading-relaxed text-ink-2">
-          We curate and assess AI solutions, filtering by safety, compliance, and
-          clinical relevance. Our team helps you identify the applications that
-          truly fit your health system&apos;s needs, avoiding wasted time,
-          resources and vendor lock-in.
-        </p>
-        <p className="text-sm leading-relaxed text-ink-2">
-          Matching you to the best-suited product for your health system through:
-        </p>
-        <ul className="space-y-2.5">
-          {[
-            ["Needs validation and compatibility fit", "Clinical and operational team will support you to define the problem and identify compatible solutions that match your needs"],
-            ["Clinical validation and regulatory compliance", "Independently check that the product's regulatory and clinical compliance requirements are documented and evidenced"],
-            ["Understanding procurement", "Support for shortlisting and understanding one-time and recurring costs of the technology"],
-          ].map(([lead, rest]) => (
-            <li key={lead} className="flex gap-2.5 text-sm leading-relaxed text-ink-2">
-              <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-teal-deep" />
-              <span>
-                <span className="font-medium text-ink">{lead}</span> — {rest}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    ),
-    demo: {
-      label: "Marketplace directory · assessed tools",
-      height: 350,
-      scale: 0.5,
-      node: <DirectoryDemo />,
-    },
-  },
-  {
-    id: "readiness",
-    title: "Check your site readiness",
-    body: (
-      <div className="space-y-4">
-        <ul className="space-y-2.5">
-          {[
-            "What level of health system readiness is needed to introduce the technology to the hospital?",
-            "Where does the hospital currently stand on it?",
-            "Detailed action report on next steps for the hospital to be able to support introduction of new technologies",
-          ].map((line) => (
-            <li key={line} className="flex gap-2.5 text-sm leading-relaxed text-ink-2">
-              <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-teal-deep" />
-              {line}
-            </li>
-          ))}
-        </ul>
-        <Link href="/site-readiness" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
-          Check site readiness <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-    ),
-    demo: {
-      label: "Site readiness · six domains",
-      height: 420,
-      scale: 0.72,
-      node: <SiteReadinessDemo />,
-    },
-  },
-  {
-    id: "deploy",
-    title: "Deploy and test",
-    body: (
-      <div className="space-y-3">
-        <p className="text-sm leading-relaxed text-ink-2">
-          On hospital data in the sandbox environment.
-        </p>
-        <p className="text-sm leading-relaxed text-ink-2">
-          Test multiple AI apps in parallel to see how well they perform on your
-          own data, in your systems.
-        </p>
-      </div>
-    ),
-    demo: {
-      label: "Monitoring · governance dashboard",
-      height: 350,
-      scale: 0.62,
-      node: <MonitoringDemo />,
-    },
-  },
-  {
-    id: "audit",
-    title: "Audit trail and scorecard",
-    body: (
-      <div className="space-y-4">
-        <p className="text-sm leading-relaxed text-ink-2">
-          Objective performance monitoring, and a final verdict.
-        </p>
-        <p className="text-sm leading-relaxed text-ink-2">
-          Scorecard built on the framework.
-        </p>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <Link href="/registry/chestxr" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
-            See a published scorecard <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link href="/framework" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
-            How we built the framework <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </div>
-    ),
-    demo: {
-      label: "Assess tool applications · verdicts",
-      height: 350,
-      scale: 0.62,
-      node: <AssessDemo />,
-    },
-  },
-];
-
-function ForHospitals() {
-  // Collapsed by default, one open at a time (brief §3).
-  const [open, setOpen] = useState<string | null>(null);
-
-  return (
-    <section id="for-hospitals" className="scroll-mt-20 space-y-6">
-      <h2 className="font-serif text-3xl leading-tight text-ink sm:text-4xl">
-        Stop running pilots that go nowhere.
-      </h2>
-      <div className="divide-y divide-line-soft overflow-hidden rounded-card border border-line bg-bg-card">
-        {HOSPITAL_ITEMS.map((item) => {
-          const expanded = open === item.id;
-          return (
-            <div key={item.id}>
-              <h3>
-                <button
-                  onClick={() => setOpen(expanded ? null : item.id)}
-                  aria-expanded={expanded}
-                  aria-controls={`panel-${item.id}`}
-                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-bg-sink/50"
-                >
-                  <span className="font-serif text-lg text-ink">{item.title}</span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 shrink-0 text-muted transition-transform",
-                      expanded && "rotate-180"
-                    )}
-                  />
-                </button>
-              </h3>
-              {expanded && (
-                <div id={`panel-${item.id}`} className="border-t border-line-soft px-5 py-5">
-                  {item.demo ? (
-                    // Copy one side, the live demo of that step on the other.
-                    // Stacks on mobile — the accordion is the main mobile
-                    // surface, so the demo sits below the copy at 375px.
-                    <div className="grid gap-6 lg:grid-cols-2">
-                      <div>{item.body}</div>
-                      <ProductPreview
-                        label={item.demo.label}
-                        height={item.demo.height}
-                        scale={item.demo.scale}
-                      >
-                        {item.demo.node}
-                      </ProductPreview>
-                    </div>
-                  ) : (
-                    item.body
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
- * §4 "For innovators"
- * ───────────────────────────────────────────────────────────────────────── */
-
-function ForInnovators() {
-  return (
-    <section id="for-innovators" className="scroll-mt-20 space-y-5">
-      <h2 className="font-serif text-3xl leading-tight text-ink sm:text-4xl">
-        From readiness card to a hospital that&apos;ll run it.
-      </h2>
-      <p className="max-w-2xl text-lg leading-relaxed text-ink-2">
-        Submit your tool, get a calibrated readiness verdict, and send a request
-        to the best-fit hospital — as a trial or a deployment. Need regulatory
-        readiness first?{" "}
-        <a
-          href={REGULATORY_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-teal-deep underline decoration-line underline-offset-4 hover:opacity-80"
-        >
-          Start there <ArrowUpRight className="h-3.5 w-3.5 text-[#BA7517]" />
-        </a>
-      </p>
-      {/* Mirrors §3.4's "How we built the framework →": each half of the site
-          gets a page explaining the method behind it. /research is reachable
-          from here and from /framework — deliberately NOT in the public nav,
-          which stays Home · About · Framework. */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <Link href="/vendors" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
-          For innovators <ArrowRight className="h-4 w-4" />
-        </Link>
-        <Link href="/research" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
-          How we built the regulatory tool <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-    </section>
   );
 }

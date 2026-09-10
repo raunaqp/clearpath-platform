@@ -81,7 +81,18 @@ const NAV: Record<Role, NavItem[]> = {
  * either of those links lands on a marketing page wearing the product header.
  */
 function isPublicRoute(pathname: string): boolean {
-  return pathname === "/" || pathname === "/about" || pathname.startsWith("/framework") || pathname.startsWith("/research");
+  return (
+    pathname === "/" ||
+    pathname === "/about" ||
+    // The two entry-point sub-pages. They used to be accordions on home, so
+    // they were public by construction; as their own routes they have to be
+    // listed or a signed-out visitor lands on a marketing page in the product
+    // header.
+    pathname === "/for-hospitals" ||
+    pathname === "/for-innovators" ||
+    pathname.startsWith("/framework") ||
+    pathname.startsWith("/research")
+  );
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {

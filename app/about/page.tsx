@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 
 /**
  * About — built from ClearPath_About_Copy.md. Copy is fixed; this file is
@@ -7,9 +11,11 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
  *
  * The source marks two sections [[double brackets]] — decisions Raunaq had to
  * make before this ships:
- *   · Team — STILL ABSENT. Needs names, roles, and a founder/employee/
- *     collaborator call. The source is explicit: ship without it rather than
- *     with invented bios. Do not add placeholder people.
+ *   · Team — RESOLVED (10 Sep): three real people, with the functional titles
+ *     and bios supplied verbatim. NOTHING here may be embellished — no added
+ *     seniority, no "founder"/"co-founder", no qualifier that was not written.
+ *     Photos are optional and fall back to a monogram; a missing photo is not
+ *     a reason to invent one.
  *   · Contact — RESOLVED (17 Aug): a single mailto, no form, so there is no
  *     storage and no DPDP notice to write.
  *
@@ -35,6 +41,61 @@ const COMMITMENTS = [
     body: "The framework is published, not a private checklist. A hospital should be able to see the standard it is being assessed against, disagree with it, and argue about it.",
   },
 ];
+
+/**
+ * Core team. Titles and bios are VERBATIM as supplied — the `title` line is a
+ * functional description, not a role in a hierarchy, and nothing may be added
+ * to it. Photos are optional: drop a file at the `photo` path and it renders;
+ * absent, the card shows a monogram rather than a broken image or a stock face.
+ */
+const TEAM = [
+  {
+    name: "Shalmalee",
+    linkedin: "linkedin.com/in/shalmaleeaidoor",
+    title: "Innovation lead · Biomedical scientist",
+    photo: "/team/shalmalee.jpg",
+    bio: "With 14+ years of experience, Shalmalee is a Biomedical Scientist by training and has crossed over from Big Pharma to the development sector to support improvement in outcomes in health and governance. Shalmalee leads the Primary Care Innovation Unit, a state-government unit embedded within Punjab's Department of Health that helps the government identify, evaluate and deploy innovations at scale.",
+  },
+  {
+    name: "Pragya",
+    linkedin: "linkedin.com/in/pragya-pasricha/",
+    title: "Systems thinking · Public policy",
+    photo: "/team/pragya.jpg",
+    bio: "Pragya holds an undergraduate degree in Economics (Hons.) and a Master's in Public Policy from National Law School, Bangalore. She has worked with the state governments of Karnataka, Meghalaya and Punjab with a focus on policy. A founding member of the Primary Care Innovation Unit, she has led the introduction of digital innovations in public health systems.",
+  },
+  {
+    name: "Raunaq",
+    linkedin: "linkedin.com/in/raunaqpradhan/",
+    title: "Venture Building. Digital health",
+    photo: "/team/raunaq.jpg",
+    bio: "I build ventures that solve real problems. For a decade, I've worked across digital health, sports, social impact, and now climate tech — taking ideas from concept to scale. I thrive in ambiguity, moving seamlessly between product, strategy, and venture building, while aligning teams around outcomes that matter.",
+  },
+];
+
+/** Photo if one exists on disk, monogram if not. Never a stock face. */
+function Avatar({ name, photo }: { name: string; photo: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span
+        aria-hidden
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-light font-serif text-xl text-teal-deep"
+      >
+        {name.charAt(0)}
+      </span>
+    );
+  }
+  return (
+    <Image
+      src={photo}
+      alt={name}
+      width={56}
+      height={56}
+      className="h-14 w-14 rounded-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export default function AboutPage() {
   return (
@@ -176,7 +237,28 @@ export default function AboutPage() {
         </p>
       </section>
 
-      {/* Team section omitted — [[bracketed]] in the source, pending Raunaq. */}
+      {/* ── Core team ────────────────────────────────────────────────────── */}
+      <section className="space-y-5">
+        <h2 className="font-serif text-2xl text-ink">Core team.</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {TEAM.map((m) => (
+            <article key={m.name} className="flex flex-col rounded-card border border-line bg-bg-card p-5">
+              <Avatar name={m.name} photo={m.photo} />
+              <p className="mt-4 font-serif text-lg text-ink">{m.name}</p>
+              <p className="mt-0.5 text-sm text-muted">{m.title}</p>
+              <a
+                href={`https://${m.linkedin}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1.5 inline-flex items-center gap-1.5 self-start text-sm text-teal-deep hover:underline"
+              >
+                LinkedIn <ExternalLink className="h-3 w-3" aria-hidden />
+              </a>
+              <p className="mt-3 text-sm leading-relaxed text-ink-2">{m.bio}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {/* ── Close ────────────────────────────────────────────────────────── */}
       <section className="space-y-4 border-t border-line pt-8">
