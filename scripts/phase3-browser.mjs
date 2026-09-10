@@ -54,6 +54,27 @@ const click = (t) =>
  * honest fix — waiting on the condition rather than assuming the first attempt
  * worked.
  */
+/**
+ * Navigate the wizard by STAGE LABEL, reading the rail's data-wizard-stage
+ * rather than counting "Continue" clicks. See the same helper in
+ * browser-verify.mjs for why counting clicks was a liability.
+ */
+const wizardStage = () =>
+  page.evaluate(() =>
+    document.querySelector('[data-wizard-stage][data-state="active"]')?.getAttribute("data-wizard-stage") ?? null
+  );
+
+async function gotoWizardStage(label, max = 10) {
+  for (let i = 0; i < max; i++) {
+    if ((await wizardStage()) === label) return true;
+    if (!(await click("Continue"))) break;
+    await wait(900);
+  }
+  if ((await wizardStage()) === label) return true;
+  ok(`wizard reaches the ${label} stage`, false, `stuck on ${(await wizardStage()) ?? "no stage rail"}`);
+  return false;
+}
+
 async function clickUntil(text, predicate, { attempts = 5, gap = 1200 } = {}) {
   for (let i = 0; i < attempts; i++) {
     await click(text);
@@ -123,8 +144,7 @@ try {
   await click("Deployable build");
   await wait(400);
 
-  await click("Continue");
-  await wait(800);
+  await gotoWizardStage("Evidence");
 
   console.log("\n── S2 · Intake checklist ──");
   t = await txt();
@@ -159,8 +179,7 @@ try {
   t = await txt();
   ok("binding a document to a gate is reflected", t.includes("answers G1"));
 
-  await click("Continue");
-  await wait(900);
+  await gotoWizardStage("Declaration");
 
   console.log("\n── S4 · Innovator declaration ──");
   t = await txt();

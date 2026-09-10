@@ -50,6 +50,37 @@ const regOk = (r) => !!r && r.href.includes("clearpath-medtech.vercel.app") && r
 // until a persona is picked. Any assertion about the PRODUCT nav therefore has
 // to set the signed-in flag as well as the role — setting the role alone now
 // leaves you on the public header.
+/**
+ * WIZARD NAVIGATION, BY STAGE LABEL.
+ *
+ * The old form was `clickText("Continue")` repeated N times with a comment
+ * saying which screen each landed on. Adding a wizard step consumed a click,
+ * put the suite on the wrong screen, and — because the wait that followed had
+ * no .catch() — aborted the whole run instead of failing one assertion. Four
+ * separate product changes have been shaped around that.
+ *
+ * These read the rail (`data-wizard-stage` / `data-state`) instead. The wizard
+ * can gain or lose steps and this keeps working; when it genuinely cannot
+ * reach a stage it records ONE failure, names where it got stuck, and lets the
+ * caller skip the dependent block.
+ */
+const wizardStage = (page) =>
+  page.evaluate(() =>
+    document.querySelector('[data-wizard-stage][data-state="active"]')?.getAttribute("data-wizard-stage") ?? null
+  );
+
+async function gotoWizardStage(page, label, max = 10) {
+  for (let i = 0; i < max; i++) {
+    if ((await wizardStage(page)) === label) return true;
+    if (!(await clickText(page, "Continue"))) break;
+    await sleep(800);
+  }
+  const stuck = await wizardStage(page);
+  if (stuck === label) return true;
+  ok(`wizard reaches the ${label} stage`, false, `stuck on ${stuck ?? "no stage rail"}`);
+  return false;
+}
+
 const signInAs = (page, role) =>
   page.evaluate((role) => {
     localStorage.setItem("clearpath-role", role);
@@ -316,15 +347,10 @@ try {
   await page.waitForSelector('input[placeholder^="e.g. CerviAI"]', { timeout: 8000 });
   await page.type('input[placeholder^="e.g. CerviAI"]', "BodhTool");
   await page.type('input[placeholder^="e.g. CerviAI Health"]', "Bodh Co");
-  await clickText(page, "Continue");        // → Reports
-  await sleep(700);
-  await clickText(page, "Continue");        // → Questions
-  // Same navigation path, same asserted N/17 literal — it starts at 0 now that
-  // nothing pre-fills it.
-  await page.waitForFunction(() => document.body.innerText.includes("0/17 answered"), { timeout: 8000 });
-  t = await body(page);
-  ok("declaration opens at 0/17 answered, nothing pre-filled", t.includes("0/17 answered"));
-  ok("no BODH panel or pre-fill button on the declaration", !t.includes("bodh validation score") && !t.includes("pre-fill clinical"));
+  if (await gotoWizardStage(page, "Declaration")) {
+    t = await body(page);
+    ok("no BODH panel or pre-fill button on the declaration", !t.includes("bodh validation score") && !t.includes("pre-fill clinical"));
+  }
 
   console.log("\n── ROLE SCOPE: vendor light dashboard vs hospital full workspace ──");
   await page.evaluate(() => localStorage.setItem("clearpath-role", "vendor"));

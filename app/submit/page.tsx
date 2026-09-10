@@ -555,7 +555,19 @@ function WizardProgress({ step }: { step: number }) {
         const active = stage === n;
         const done = stage > n;
         return (
-          <li key={label} className="flex items-center gap-2">
+          /*
+            data-wizard-stage / data-state make the rail the ADDRESSABLE
+            description of where the wizard is. Suites navigate by asking which
+            stage is active rather than counting "Continue" clicks — counting
+            clicks means adding a step silently lands a suite on the wrong
+            screen, which has constrained this wizard four times.
+          */
+          <li
+            key={label}
+            data-wizard-stage={label}
+            data-state={active ? "active" : done ? "done" : "todo"}
+            className="flex items-center gap-2"
+          >
             <span
               className={cn(
                 "flex h-5 w-5 items-center justify-center rounded-full text-[11px]",
