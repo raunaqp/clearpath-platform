@@ -43,6 +43,32 @@ try {
   ok("facilitation says it has not started", /facilitation has not started/i.test(t));
   ok("no hospital is named as having agreed", !/willing/i.test(t) || /has not started/i.test(t));
 
+  console.log("\n── S9 matching, as a table ──");
+  await page.goto(BASE + "/submit/cerviai/card", { waitUntil: "networkidle2" });
+  await wait(2200);
+  // Sites are ROWS and the four fit dimensions are COLUMNS. The previous shape
+  // was four stacked blocks per hospital, which made comparing sites on one
+  // dimension impossible.
+  const table = await page.evaluate(() => {
+    const h = [...document.querySelectorAll("h2")].find((e) => /Where this fits/.test(e.textContent));
+    const tbl = h?.closest("section")?.querySelector("table");
+    if (!tbl) return null;
+    return {
+      headers: [...tbl.querySelectorAll("thead th")].map((e) => e.textContent.trim().toLowerCase()),
+      sites: [...tbl.querySelectorAll("tbody")].length,
+      text: tbl.innerText.toLowerCase(),
+    };
+  });
+  ok("matching renders as a table", !!table);
+  ok("…with the four fit dimensions as columns, plus site and band",
+    ["site", "problem fit", "context validity", "infrastructure", "conditions satisfiable", "band"]
+      .every((h) => table?.headers.includes(h)));
+  ok("…one row group per site, excluded sites included", table?.sites === 5, String(table?.sites));
+  ok("…excluded sites carry their reason, not just their absence",
+    table?.text.includes("not eligible") && table.text.includes("does not operate at chc level"));
+  ok("…and every row keeps its chronology line",
+    (table?.text.match(/site profile baselined|site records were not established/g) ?? []).length === 5);
+
   console.log("\n── S10 express interest, to ClearPath ──");
   await page.goto(BASE + "/submit/cerviai/interest", { waitUntil: "networkidle2" });
   await wait(1800);

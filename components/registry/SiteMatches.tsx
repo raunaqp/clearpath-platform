@@ -6,7 +6,7 @@ import type { ContextMatch } from "@/lib/match";
 import { matchToolToSites } from "@/lib/match";
 import { getHospitals } from "@/lib/mock/api";
 import { getSiteProfiles, getProblemRegisters } from "@/lib/mock/api-registry";
-import { MatchBreakdownCard } from "./MatchBreakdown";
+import { MatchTable } from "./MatchBreakdown";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -60,11 +60,9 @@ export function SiteMatches({
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-teal-deep" />
         </div>
       ) : (
-        <ul className="mt-4 space-y-3">
-          {matches.map((m) => (
-            <MatchBreakdownCard key={m.hospital.id} match={m} />
-          ))}
-        </ul>
+        <div className="mt-4">
+          <MatchTable matches={matches} />
+        </div>
       )}
 
       {/*
