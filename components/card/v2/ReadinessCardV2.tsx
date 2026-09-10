@@ -188,6 +188,17 @@ export function ReadinessCardV2({
       <p className="px-1 text-xs leading-relaxed text-[#6B766F]">
         Expiry basis: {card.expiryBasis}
       </p>
+
+      {/* The reader for the triage return. A decline reason that reaches
+          nobody is the same as being ignored. */}
+      {showRemediationLink && (
+        <Link
+          href={`/submit/${tool.slug}/response`}
+          className="inline-flex items-center gap-1.5 px-1 text-sm text-[#0F6E56] hover:underline"
+        >
+          Hospital response <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      )}
     </article>
   );
 }
