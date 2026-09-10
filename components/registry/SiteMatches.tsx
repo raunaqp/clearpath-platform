@@ -60,7 +60,7 @@ export function SiteMatches({
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-teal-deep" />
         </div>
       ) : (
-        <div className="mt-4">
+        <div className="mt-4 overflow-x-auto">
           <MatchTable matches={matches} />
         </div>
       )}

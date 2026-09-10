@@ -46,28 +46,52 @@ try {
   console.log("\n── S9 matching, as a table ──");
   await page.goto(BASE + "/submit/cerviai/card", { waitUntil: "networkidle2" });
   await wait(2200);
-  // Sites are ROWS and the four fit dimensions are COLUMNS. The previous shape
-  // was four stacked blocks per hospital, which made comparing sites on one
-  // dimension impossible.
+  // THREE columns, not six. The four fit dimensions each had a column of their
+  // own carrying a sentence, which needed a sideways scroll at 1280px — so the
+  // answer to "can we place this?" sat behind it. Site, band and the one
+  // deciding reason fit; the detail is one click away, per row.
   const table = await page.evaluate(() => {
     const h = [...document.querySelectorAll("h2")].find((e) => /Where this fits/.test(e.textContent));
     const tbl = h?.closest("section")?.querySelector("table");
     if (!tbl) return null;
+    const scroller = tbl.closest("[class*=overflow-x-auto]") ?? tbl.parentElement;
     return {
-      headers: [...tbl.querySelectorAll("thead th")].map((e) => e.textContent.trim().toLowerCase()),
+      headers: [...tbl.querySelectorAll("thead th")].map((e) => e.textContent.trim().toLowerCase()).filter(Boolean),
       sites: [...tbl.querySelectorAll("tbody")].length,
       text: tbl.innerText.toLowerCase(),
+      overflows: scroller ? scroller.scrollWidth > scroller.clientWidth + 1 : false,
+      // A band that wraps mid-phrase reads as two states rather than one.
+      wrappedBadges: [...tbl.querySelectorAll("[class*=rounded-pill], button")]
+        .filter((e) => e.getClientRects().length > 1).length,
+      detailButtons: [...tbl.querySelectorAll("button")].filter((b) => /detail/i.test(b.textContent)).length,
     };
   });
   ok("matching renders as a table", !!table);
-  ok("…with the four fit dimensions as columns, plus site and band",
-    ["site", "problem fit", "context validity", "infrastructure", "conditions satisfiable", "band"]
-      .every((h) => table?.headers.includes(h)));
-  ok("…one row group per site, excluded sites included", table?.sites === 5, String(table?.sites));
+  ok("…site, band and one deciding reason — the four dimensions are not columns",
+    JSON.stringify(table?.headers) === JSON.stringify(["site", "band", "why"]), JSON.stringify(table?.headers));
+  ok("…no horizontal scroll at 1280px", table?.overflows === false);
+  ok("…nothing wraps inside a badge or button", table?.wrappedBadges === 0, String(table?.wrappedBadges));
+  ok("…one row per site, excluded sites included", table?.sites === 5, String(table?.sites));
   ok("…excluded sites carry their reason, not just their absence",
     table?.text.includes("not eligible") && table.text.includes("does not operate at chc level"));
-  ok("…and every row keeps its chronology line",
-    (table?.text.match(/site profile baselined|site records were not established/g) ?? []).length === 5);
+  ok("…every row can be expanded for the four-dimension detail", table?.detailButtons === 5, String(table?.detailButtons));
+
+  // The facts that must survive the narrowing: all four dimensions, and the
+  // chronology line, per row — available on expand rather than deleted.
+  await page.evaluate(() => {
+    const h = [...document.querySelectorAll("h2")].find((e) => /Where this fits/.test(e.textContent));
+    const b = [...(h?.closest("section")?.querySelectorAll("button") ?? [])].find((x) => /detail/i.test(x.textContent));
+    b?.click();
+  });
+  await wait(600);
+  const detail = await page.evaluate(() => {
+    const h = [...document.querySelectorAll("h2")].find((e) => /Where this fits/.test(e.textContent));
+    return h?.closest("section")?.innerText.toLowerCase() ?? "";
+  });
+  ok("expanding a row shows all four fit dimensions",
+    ["problem fit", "context validity", "infrastructure", "conditions satisfiable"].every((d) => detail.includes(d)));
+  ok("…and that row's chronology line",
+    /site profile baselined|site records were not established/.test(detail));
 
   console.log("\n── S10 express interest, to ClearPath ──");
   await page.goto(BASE + "/submit/cerviai/interest", { waitUntil: "networkidle2" });
