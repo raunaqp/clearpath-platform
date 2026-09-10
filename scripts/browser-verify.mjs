@@ -393,6 +393,9 @@ try {
   t = await body(page);
   ok("registry: Site B listed as a developing site", t.includes("sites on the network") && t.includes("site b") && t.includes("developing"));
   ok("registry reflects all three (Northvale's tools + Lakeview's trial)", t.includes("cerviai") && t.includes("ovareserve") && t.includes("lakeview"));
+  // The directory is presented as "the marketplace", matching the home entry
+  // card that routes here — the nav label stays "Registry".
+  ok("registry heading + strapline", t.includes("the marketplace") && t.includes("piloted in multiple conditions and outcomes are published"));
 
   // Lakeview (fertility centre) — specialty-scoped inbox + readiness.
   await page.evaluate(() => localStorage.setItem("clearpath-hospital", "hosp-lakeview"));
@@ -498,7 +501,12 @@ try {
   // page reintroducing the acronym is the regression this guards.
   for (const path of ["/", "/about", "/research"]) {
     await goto(page, path);
-    ok(`no 'PDMF' acronym on ${path}`, !(await body(page)).includes("pdmf"));
+    t = await body(page);
+    ok(`no 'PDMF' acronym on ${path}`, !t.includes("pdmf"));
+    if (path === "/about") {
+      ok("about h1 (select/test/deploy/monitor)", t.includes("select, test, deploy, and monitor") && t.includes("in-house and third-party ai products"));
+      ok("about sub (decision support, not a pilot post-mortem)", t.includes("more ai tools than it can safely evaluate") && t.includes("decision support tool for hospitals") && !t.includes("no better placed to decide"));
+    }
   }
   await goto(page, "/framework");
   t = await body(page);

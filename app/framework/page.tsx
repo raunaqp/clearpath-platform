@@ -223,11 +223,10 @@ export default function FrameworkPage() {
           A readiness standard for digital and clinical AI before it reaches patients.
         </h1>
         <p className="max-w-3xl text-lg leading-relaxed text-ink-2">
-          The framework is a practitioner-led, open standard that answers the question of{" "}
-          <span className="text-ink">whether the tool is fit for a particular context</span> — not
-          whether it works in general, but whether it is ready to be deployed here. It is a
-          sector-led benchmark that sits beside a regulator rather than replacing one — the same
-          shape as open standards like EdTech Tulna, translated to clinical AI.
+          The framework is a practitioner-led standard that answers the question of{" "}
+          <span className="text-ink">whether the tool is fit for a particular context</span>. It
+          sits beside a regulator rather than replacing one — the same shape as open standards
+          like EdTech Tulna, translated to clinical AI.
         </p>
         <div className="flex flex-wrap gap-2 text-sm">
           {[["4", "dimensions"], [`${PUBLIC_CLUSTERS} / ${PRIVATE_CLUSTERS}`, "clusters · public / private"], [`${TOTAL_QUESTIONS}`, "assessment items"], [`0–${MAX_LEVEL}`, "maturity scale"]].map(([n, l]) => (

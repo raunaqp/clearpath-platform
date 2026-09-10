@@ -38,7 +38,7 @@ const ENTRY_CARDS = [
     href: "#for-innovators",
     icon: Boxes,
     eyebrow: "For innovators",
-    body: "Identify your regulatory readiness first? Get your product evaluated",
+    body: "Identify your regulatory readiness first. Get your product evaluated",
   },
   {
     href: "/registry",

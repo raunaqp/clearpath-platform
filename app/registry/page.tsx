@@ -49,10 +49,9 @@ export default function RegistryPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <h1 className="font-serif text-3xl text-ink">Registry</h1>
+        <h1 className="font-serif text-3xl text-ink">The marketplace</h1>
         <p className="text-sm text-muted">
-          Where each tool has been trialled and deployed, and the outcome. Clinical trials and
-          deployments are tracked as separate categories.
+          Where each tool has been piloted in multiple conditions and outcomes are published.
         </p>
       </header>
 

@@ -48,17 +48,14 @@ export default function AboutPage() {
           About ClearPath
         </p>
         <h1 className="font-serif text-4xl leading-[1.05] text-ink sm:text-5xl">
-          Built inside a health system, for health systems.
+          We enable healthcare providers to select, test, deploy, and monitor
+          in-house and third-party AI products.
         </h1>
         <div className="max-w-3xl space-y-4 text-lg leading-relaxed text-ink-2">
           <p>
             Every hospital is offered more AI tools than it can safely evaluate.
-            Most of what follows is a pilot that runs, produces a report, and
-            ends — leaving the hospital no better placed to decide than before.
-          </p>
-          <p>
-            ClearPath exists to make that decision structured, evidenced, and
-            owned by the people who carry the risk.
+            ClearPath produces evidence that acts as a decision support tool for
+            hospitals.
           </p>
         </div>
       </section>
