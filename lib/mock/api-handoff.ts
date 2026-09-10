@@ -19,6 +19,7 @@ export const isRequestFormOpen = (slug: string) => latency(handoff.isRequestForm
 export const createDeploymentRequest = (i: handoff.CreateRequestInput) =>
   latency(handoff.createDeploymentRequest(i));
 export const getDeploymentRequest = (slug: string) => latency(handoff.getDeploymentRequest(slug));
+export const getOwnRequest = (slug: string) => latency(handoff.getOwnRequest(slug));
 export const getHandoffState = (slug: string) => latency(handoff.handoffState(slug));
 
 export const recordTriage = (i: handoff.RecordTriageInput) => latency(handoff.recordTriage(i));

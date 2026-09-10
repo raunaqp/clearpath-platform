@@ -387,6 +387,19 @@ export function createDeploymentRequest(input: CreateRequestInput): DeploymentRe
   return request;
 }
 
+/**
+ * A request THIS SESSION built, ignoring seeded fixtures.
+ *
+ * The innovator's own screens need this: a seeded request exists so the charter
+ * and the trial screens are reachable without clicking the whole handoff, but
+ * treating it as "you have already sent one" would take the send button away
+ * from a vendor who has sent nothing. Seeded data makes downstream screens
+ * reachable; it must not stand in for the user's own actions.
+ */
+export function getOwnRequest(slug: string): DeploymentRequest | undefined {
+  return allRequests().find((r) => r.slug === slug);
+}
+
 export function getDeploymentRequest(slug: string): DeploymentRequest | undefined {
   // A request the innovator built in this session wins over a seeded one, so
   // clicking through the wizard always shows your own work rather than a
@@ -394,9 +407,16 @@ export function getDeploymentRequest(slug: string): DeploymentRequest | undefine
   return allRequests().find((r) => r.slug === slug) ?? SEEDED_REQUESTS[slug];
 }
 
-/** The innovator-facing journey state across Act A. */
+/**
+ * The innovator-facing journey state across Act A.
+ *
+ * Reads the SESSION's own request, not a seeded one — this is "where has my
+ * submission got to", and a fixture that exists to make downstream screens
+ * reachable must not report progress the vendor has not made. Seeded requests
+ * still drive the hospital-side screens, where they are the demonstration.
+ */
 export function handoffState(slug: string): HandoffState {
-  const request = getDeploymentRequest(slug);
+  const request = getOwnRequest(slug);
   if (request && ["RECEIVED", "UNDER_ASSESSMENT", "ACCEPTED", "DECLINED", "COUNTERED"].includes(request.status)) {
     return "HOSPITAL_RECEIVED";
   }

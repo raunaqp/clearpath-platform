@@ -8,7 +8,7 @@ import type { ConditionPlan, DeploymentRequest } from "@/lib/schemas/handoff";
 import { REQUEST_STATUS_LABEL } from "@/lib/schemas/handoff";
 import {
   createDeploymentRequest,
-  getDeploymentRequest,
+  getOwnRequest,
   getFacilitation,
   isRequestFormOpen,
 } from "@/lib/mock/api-handoff";
@@ -64,7 +64,10 @@ export default function RequestPage() {
       const [open, v, req, f, registers] = await Promise.all([
         isRequestFormOpen(id),
         getCardV2(id),
-        getDeploymentRequest(id),
+        // Only a request THIS session sent counts as "already sent" — a seeded
+        // fixture exists to make downstream screens reachable, not to stand in
+        // for the vendor's own action.
+        getOwnRequest(id),
         getFacilitation(id),
         getProblemRegisters(),
       ]);
