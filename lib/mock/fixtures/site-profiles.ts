@@ -303,6 +303,33 @@ PROBLEM_REGISTERS.push({
   ],
 });
 
+/**
+ * Perambur has a profile and DELIBERATELY NO REGISTER. Triage cannot answer its
+ * first question against this site, which is the point — publishing a register
+ * is the work there, not declining the request.
+ */
+SITE_PROFILES.push({
+  hospitalId: "hosp-perambur",
+  baselinedAt: SITE_PROFILE_BASELINED_AT,
+  archetype:
+    "A municipal hospital that has profiled its infrastructure but not yet ranked its problems. " +
+    "Representative of a site partway through onboarding.",
+  facility: { type: "Municipal hospital", catchment: "Ward catchment, Chennai" },
+  digital: { emrPresent: true, fhirSurfaceAvailable: false, abdmParticipating: false },
+  staffing: { releasableOperators: 5, operatorCadre: "STAFF_NURSE", trainingCapacityHours: 4, clinicianSupervisionOnSite: true },
+  governance: { dpoAppointed: false, dpiaProcessInPlace: false, incidentRouteDefined: true },
+  careLevels: ["DISTRICT_HOSPITAL", "PHC"],
+  cadres: ["STAFF_NURSE", "MO", "SPECIALIST", "CLINICIAN"],
+  deploymentModes: ["OPD_QUEUE", "WARD"],
+  infrastructure: {
+    powerBackupHours: 12,
+    connectivity: "reliable",
+    offlineCaptureSupported: true,
+    referralPathways: ["oncology", "TB confirmatory"],
+    devices: ["tablets", "ultrasound"],
+  },
+});
+
 export function getSiteProfile(hospitalId: string): SiteOperatingProfile | undefined {
   return SITE_PROFILES.find((p) => p.hospitalId === hospitalId);
 }

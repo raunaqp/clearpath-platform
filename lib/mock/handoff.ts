@@ -24,6 +24,7 @@ import { getSiteProfile, getProblemRegister } from "./fixtures/site-profiles";
 import { findProblem } from "@/lib/match";
 import { HOSPITALS } from "./fixtures/hospitals";
 import { getItem } from "@/lib/engine/item-bank";
+import { SEEDED_REQUESTS, SEEDED_TRIAGE } from "./fixtures/workflow-states";
 
 const INTEREST_KEY = "clearpath-interest-v1";
 const REQUEST_KEY = "clearpath-requests-v1";
@@ -78,7 +79,11 @@ export function resetHandoff() {
 /** The facilitating hospital for a tool — the strongest match, in the demo. */
 const FACILITATED_HOSPITAL: Record<string, string> = {
   cerviai: "hosp-northvale",
-  retinascan: "hosp-northvale",
+  retinascan: "hosp-kaveri",
+  chestxr: "hosp-northvale",
+  symptombot: "hosp-northvale",
+  ovareserve: "hosp-lakeview",
+  embryograde: "hosp-perambur",
 };
 
 export type ExpressInterestInput = {
@@ -148,6 +153,36 @@ export function getInterest(slug: string): InterestRecord | undefined {
  * advance, so it is seeded rather than driven from the innovator's screens.
  */
 const SEEDED_FACILITATION_DATES: Record<string, Record<FacilitationStep, string>> = {
+  chestxr: {
+    FIT_VALIDATED: "2026-09-25T00:00:00.000Z",
+    SHARING_CONFIRMED: "2026-09-25T00:00:00.000Z",
+    HOSPITAL_APPROACHED: "2026-09-26T00:00:00.000Z",
+    BOTH_SIDES_WILLING: "2026-09-30T00:00:00.000Z",
+  },
+  symptombot: {
+    FIT_VALIDATED: "2026-09-25T00:00:00.000Z",
+    SHARING_CONFIRMED: "2026-09-25T00:00:00.000Z",
+    HOSPITAL_APPROACHED: "2026-09-26T00:00:00.000Z",
+    BOTH_SIDES_WILLING: "2026-09-30T00:00:00.000Z",
+  },
+  embryograde: {
+    FIT_VALIDATED: "2026-09-25T00:00:00.000Z",
+    SHARING_CONFIRMED: "2026-09-25T00:00:00.000Z",
+    HOSPITAL_APPROACHED: "2026-09-26T00:00:00.000Z",
+    BOTH_SIDES_WILLING: "2026-09-30T00:00:00.000Z",
+  },
+  ovareserve: {
+    FIT_VALIDATED: "2026-09-25T00:00:00.000Z",
+    SHARING_CONFIRMED: "2026-09-25T00:00:00.000Z",
+    HOSPITAL_APPROACHED: "2026-09-26T00:00:00.000Z",
+    BOTH_SIDES_WILLING: "2026-09-30T00:00:00.000Z",
+  },
+  retinascan: {
+    FIT_VALIDATED: "2026-09-25T00:00:00.000Z",
+    SHARING_CONFIRMED: "2026-09-25T00:00:00.000Z",
+    HOSPITAL_APPROACHED: "2026-09-26T00:00:00.000Z",
+    BOTH_SIDES_WILLING: "2026-09-30T00:00:00.000Z",
+  },
   cerviai: {
     FIT_VALIDATED: "2026-09-25T00:00:00.000Z",
     SHARING_CONFIRMED: "2026-09-25T00:00:00.000Z",
@@ -353,7 +388,10 @@ export function createDeploymentRequest(input: CreateRequestInput): DeploymentRe
 }
 
 export function getDeploymentRequest(slug: string): DeploymentRequest | undefined {
-  return allRequests().find((r) => r.slug === slug);
+  // A request the innovator built in this session wins over a seeded one, so
+  // clicking through the wizard always shows your own work rather than a
+  // fixture that happens to share the slug.
+  return allRequests().find((r) => r.slug === slug) ?? SEEDED_REQUESTS[slug];
 }
 
 /** The innovator-facing journey state across Act A. */
@@ -454,7 +492,7 @@ export function recordTriage(input: RecordTriageInput): TriageDecision {
 }
 
 export function getTriage(slug: string): TriageDecision | undefined {
-  return allTriage().find((r) => r.slug === slug);
+  return allTriage().find((r) => r.slug === slug) ?? SEEDED_TRIAGE[slug];
 }
 
 /**

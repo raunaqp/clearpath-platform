@@ -18,6 +18,7 @@ import { deriveEndpoints } from "@/lib/engine/charter";
 import { getProblemRegister } from "./fixtures/site-profiles";
 import { getDeploymentRequest } from "./handoff";
 import { getCardV2 } from "./cards-v2";
+import { SEEDED_VERDICTS } from "./fixtures/workflow-states";
 import { appendOnlyGuard, inForce } from "./append-only";
 
 const VERDICT_KEY = "clearpath-verdicts-v1";
@@ -141,7 +142,10 @@ export const SEEDED_VERDICT: CommitteeVerdict = {
 
 export function getVerdicts(slug: string): CommitteeVerdict[] {
   const stored = allVerdicts().filter((v) => v.slug === slug);
-  const seeded = slug === "cerviai" ? [SEEDED_VERDICT] : [];
+  const seeded =
+    slug === "cerviai"
+      ? [SEEDED_VERDICT]
+      : SEEDED_VERDICTS.filter((v) => v.slug === slug);
   return [...seeded, ...stored].sort((a, b) => a.revision - b.revision);
 }
 

@@ -92,4 +92,22 @@ export const HOSPITALS: Hospital[] = [
     seeking: ["screening", "point-of-care"],
     siteReadiness: runSiteAssessment(LAKEVIEW_DOMAINS), // → TIER_B (trial-ready)
   },
+  /**
+   * A site that has BASELINED ITS PROFILE BUT NOT PUBLISHED A REGISTER.
+   *
+   * Triage's first question then has no answer — which 6a modelled as
+   * `unanswerable` rather than a pass or a fail, and nothing exercised. It is a
+   * real and common state: a site can describe its infrastructure long before
+   * it agrees internally on what its priorities are.
+   */
+  {
+    id: "hosp-perambur",
+    name: "Perambur Municipal Hospital",
+    tier: "tier3",
+    location: "Chennai, Tamil Nadu",
+    focus: "Municipal hospital that has profiled its infrastructure but not yet ranked its problems.",
+    acceptsCareLevels: ["secondary", "primary"],
+    seeking: ["screening", "samd"],
+    siteReadiness: runSiteAssessment(LAKEVIEW_DOMAINS),
+  },
 ];
