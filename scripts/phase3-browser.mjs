@@ -101,8 +101,13 @@ try {
   await wait(300);
 
   let t = await txt();
-  ok("context panel renders (entity, build status, claim, scope, setting)",
-    /context declaration/i.test(t) && /build status/i.test(t) && /exact claim being assessed/i.test(t) && /out of scope/i.test(t));
+  // "Exact claim being assessed" and "Out of scope" are REMOVED from S1 — the
+  // claim is carried by intended use, and a tool's non-scope is a card output,
+  // not something asked for up front. Their absence is asserted here.
+  ok("context panel renders (entity, build status, setting)",
+    /context declaration/i.test(t) && /build status/i.test(t) && /procurement path/i.test(t) && /operator cadre/i.test(t));
+  ok("…without the removed claim and scope fields",
+    !/exact claim being assessed/i.test(t) && !/out of scope/i.test(t));
   ok("the six-stage rail is shown",
     ["Context", "Checklist", "Evidence", "Declaration", "Assessment", "Card"].every((s) => t.includes(s)));
   ok("context-lock notice present", t.includes("Context is fixed once submitted"));
@@ -165,10 +170,17 @@ try {
   ok("the word 'verdict' is absent from this screen", !/verdict/i.test(t));
   ok("no per-dimension percentages", !/D1 \d+%/.test(t));
 
-  await click("Pre-fill clinical + fairness gates");
+  // The BODH pre-fill button is REMOVED, so nothing seeds the counter. The
+  // N/17 literal itself is what the site-wide suite depends on, and it still
+  // renders — starting at 0 and moving as questions are answered by hand.
+  ok("the 'N/17 answered' literal survives (browser suite depends on it)", t.includes("0/17 answered"));
+  await page.evaluate(() => {
+    const yes = [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Yes");
+    yes.slice(0, 3).forEach((b) => b.click());
+  });
   await wait(700);
   t = await txt();
-  ok("the '3/17 answered' literal survives (browser suite depends on it)", t.includes("3/17 answered"));
+  ok("…and the counter moves as questions are answered by hand", t.includes("3/17 answered"));
 
   await page.evaluate(() => {
     [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "Yes").forEach((b) => b.click());

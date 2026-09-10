@@ -34,7 +34,9 @@ export function CardHeaderBlock({ card }: { card: ReadinessCard }) {
       <Field label="Issued" value={formatCardDate(card.issuedAt)} />
       <Field label="Expires" value={formatCardDate(card.expiresAt)} />
       <Field label="Tool" value={card.toolVersion} />
-      <Field label="Model" value={card.modelVersion} />
+      {/* Omitted rather than printed as "not stated" — the wizard no longer
+          asks for it, so its absence is the norm, not a gap in the record. */}
+      {card.modelVersion ? <Field label="Model" value={card.modelVersion} /> : null}
     </div>
   );
 }

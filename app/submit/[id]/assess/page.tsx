@@ -181,7 +181,7 @@ export default function AssessPage() {
             </div>
             <div className="bg-bg-card px-5 py-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-                Unsupported gates
+                Gates with no evidence behind them
               </p>
               <p className="mt-1 font-serif text-2xl text-ink">
                 {run.unsupportedGates.length === 0 ? "none" : run.unsupportedGates.join(", ")}
@@ -218,22 +218,6 @@ export default function AssessPage() {
             >
               See the readiness card <ArrowRight className="h-4 w-4" />
             </button>
-          )}
-
-          {/* Discrepancies, named. A count with no detail is a number to argue with. */}
-          {run.discrepancies.length > 0 && (
-            <section className="rounded-card border border-line bg-bg-card px-5 py-4">
-              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
-                Where the declaration and the evidence differ
-              </p>
-              <ul className="mt-2 space-y-2">
-                {run.discrepancies.map((d) => (
-                  <li key={d.gateId} className="text-sm leading-relaxed text-ink">
-                    <span className="font-mono text-xs text-muted">{d.gateId}</span> — {d.explanation}
-                  </li>
-                ))}
-              </ul>
-            </section>
           )}
         </>
       )}

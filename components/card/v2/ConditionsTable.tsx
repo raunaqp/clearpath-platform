@@ -68,14 +68,11 @@ export function ConditionsTable({ conditions }: { conditions: CardCondition[] })
                   </span>
                   <p className="mt-1.5 text-xs leading-relaxed text-[#6B766F]">
                     {c.blocks === "TRIAL"
-                      ? "Running a trial cannot establish this — a trial is the activity it gates."
+                      ? "A trial cannot establish this."
                       : "A supervised trial is a route through this."}
                   </p>
                 </td>
-                <td className="w-[40%] py-3 text-sm leading-relaxed text-[#0E1411]">
-                  {c.fix}
-                  <p className="mt-1 text-xs leading-relaxed text-[#6B766F]">{c.clearedBy}</p>
-                </td>
+                <td className="w-[40%] py-3 text-sm leading-relaxed text-[#0E1411]">{c.fix}</td>
               </tr>
             );
           })}

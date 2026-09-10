@@ -18,12 +18,13 @@ import { canBeAssessed } from "@/lib/schemas/context";
 import { ContextPanel } from "@/components/submit/ContextPanel";
 import { EvidenceManager, type DraftDoc } from "@/components/submit/EvidenceManager";
 import { IntakeChecklistView } from "@/components/submit/IntakeChecklistView";
+import type { ChecklistLine } from "@/lib/engine/intake-checklist";
+import { computeGeneralisability, computeExpiry } from "@/lib/engine/evidence";
 import { declarationsExceedingEvidence } from "@/lib/engine/assessment-run";
 import type { Level, SelfDeclaration } from "@/lib/schemas/score";
 import { CERVIAI_CONTEXT, CERVIAI_EVIDENCE } from "@/lib/mock/fixtures/cerviai-v2";
 import { RETINASCAN_CONTEXT, RETINASCAN_EVIDENCE } from "@/lib/mock/fixtures/retinascan-v2";
 import { WIZARD_EXAMPLES, type WizardExample } from "@/lib/wizard/examples";
-import { getBodhScore, bodhToGateAnswers, type BodhScore } from "@/lib/mock/fixtures/bodh-scores";
 import { Segmented } from "@/components/wizard/Segmented";
 import { DocViewer } from "@/components/DocViewer";
 import { cn } from "@/lib/utils";
@@ -143,8 +144,40 @@ export default function SubmitWizard() {
   const [attached, setAttached] = useState<string[]>([]);
   const [context, setContext] = useState<SubmissionContext>(EMPTY_CONTEXT);
   const [docs, setDocs] = useState<DraftDoc[]>([]);
+
+  /**
+   * Attach against ONE checklist line. The line supplies the evidence type, so
+   * a file lands already answering something instead of arriving untyped from
+   * a generic picker and waiting to be classified by hand.
+   */
+  function attachToLine(line: ChecklistLine, files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const added: DraftDoc[] = Array.from(files).map((file, i) => {
+      const doc: DraftDoc = {
+        id: `ev-${line.id}-${Date.now()}-${i}`,
+        submissionId: "draft",
+        itemRefs: [],
+        type: line.accepts[0],
+        independence: "VENDOR_GENERATED",
+        name: file.name.replace(/\.[^.]+$/, ""),
+        provenance: {
+          generatedBy: "",
+          fundedBy: "",
+          population: { setting: "", cadre: "", sampleN: null, dateFrom: "", dateTo: "" },
+          documentDate: new Date().toISOString().slice(0, 10),
+          validUntil: null,
+        },
+        limitation: "",
+        generalisability: { limited: false, reason: null },
+        expired: false,
+        file,
+        objectUrl: URL.createObjectURL(file),
+      };
+      return { ...doc, generalisability: computeGeneralisability(doc, context), expired: computeExpiry(doc) };
+    });
+    setDocs((prev) => [...prev, ...added]);
+  }
   const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
-  const [bodh, setBodh] = useState<BodhScore>(() => getBodhScore("default"));
   const [error, setError] = useState<string | null>(null);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -173,7 +206,6 @@ export default function SubmitWizard() {
       careLevel: tool.careLevel,
     });
     setAnswers({ ...gateAnswers });
-    setBodh(getBodhScore(ex.key));
     const seedDocs = docsForTool(ex.key);
     setCandidateDocs(seedDocs);
     setAttached(seedDocs.filter((d) => d.status !== "missing").map((d) => d.id));
@@ -246,7 +278,7 @@ export default function SubmitWizard() {
           submissionId: `sub-${created.slug}`,
         })),
         toolVersion: form.toolVersion ? `${form.toolName} ${form.toolVersion}` : form.toolName,
-        modelVersion: form.modelVersion || "not stated",
+        modelVersion: form.modelVersion,
         issuedAt: new Date().toISOString(),
       });
 
@@ -329,8 +361,7 @@ export default function SubmitWizard() {
       {/* ── Step 1 · Company & tool ─────────────────────────────────────────── */}
       {step === 1 && (
         <StepShell title="Context" onBack={() => setStep(0)}
-          onNext={() => setStep(2)} nextDisabled={!form.toolName || !form.company || !canBeAssessed(context.buildStatus)}
-          subtitle="Who you are, what the tool is, and exactly where it is being deployed. The card that comes out is valid only inside the context you declare here.">
+          onNext={() => setStep(2)} nextDisabled={!form.toolName || !form.company || !canBeAssessed(context.buildStatus)}>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Tool name">
               <TextInput value={form.toolName} onChange={(v) => set("toolName", v)} placeholder="e.g. CerviAI" />
@@ -340,19 +371,6 @@ export default function SubmitWizard() {
             </Field>
             <Field label="Founder">
               <TextInput value={form.founder} onChange={(v) => set("founder", v)} placeholder="Name" />
-            </Field>
-            {/*
-              The card header renders both of these. Without them a fresh
-              submission shows "not stated" on the screen most meant to look
-              deliberate — and a readiness card for build 2.3.1 says nothing
-              about 2.4, so the version is part of what the card is a claim
-              about, not decoration.
-            */}
-            <Field label="Tool version" hint="The build being assessed. A card is a claim about this version, not the product.">
-              <TextInput value={form.toolVersion} onChange={(v) => set("toolVersion", v)} placeholder="e.g. 2.3.1" />
-            </Field>
-            <Field label="Model version" hint="The model build behind it, where there is one.">
-              <TextInput value={form.modelVersion} onChange={(v) => set("modelVersion", v)} placeholder="e.g. cerv-vision-2026.07" />
             </Field>
             <Field label="Website">
               <TextInput value={form.website} onChange={(v) => set("website", v)} placeholder="example.in" />
@@ -442,23 +460,6 @@ export default function SubmitWizard() {
             )}
           </div>
 
-          {/* BODH validation score — pre-fills clinical (G1), fairness (G17), safety (G2) */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-teal-deep/30 bg-teal-light/40 px-4 py-3">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-teal-deep">BODH validation score</p>
-              <p className="mt-0.5 text-sm text-ink">
-                Accuracy {bodh.accuracy} · Fairness {bodh.fairness} · Safety {bodh.safety}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setAnswers((a) => ({ ...a, ...bodhToGateAnswers(bodh) }))}
-              className="rounded-md bg-teal-deep px-3 py-1.5 text-xs text-white transition-opacity hover:opacity-90"
-            >
-              Pre-fill clinical + fairness gates
-            </button>
-          </div>
-
           <div className="space-y-6">
             {(["D1", "D2", "D3", "D4"] as const).map((dim) => (
               <div key={dim}>
@@ -486,8 +487,7 @@ export default function SubmitWizard() {
 
       {/* ── Step 2 · Checklist + evidence ───────────────────────────────────── */}
       {step === 2 && (
-        <StepShell title="Evidence" onBack={() => setStep(1)} onNext={() => setStep(3)}
-          subtitle="The checklist says what a submission of this kind is expected to bring. Attach documents against it, then bind each one to the gates it speaks to.">
+        <StepShell title="Evidence" onBack={() => setStep(1)} onNext={() => setStep(3)}>
           <div className="space-y-6">
             <details className="rounded-card border border-line bg-bg-card" open>
               <summary className="cursor-pointer px-4 py-3 text-sm text-ink">
@@ -499,6 +499,7 @@ export default function SubmitWizard() {
                   context={context}
                   attached={docs}
                   compact
+                  onAttach={attachToLine}
                 />
               </div>
             </details>
@@ -510,12 +511,11 @@ export default function SubmitWizard() {
               onChange={setDocs}
             />
 
-            {candidateDocs.length > 0 && (
+            {candidateDocs.filter((d) => d.status === "missing").length > 0 && (
               <div className="rounded-card border border-line bg-bg-card px-4 py-3">
                 <p className="text-xs leading-relaxed text-muted">
-                  {candidateDocs.filter((d) => d.status === "missing").length > 0
-                    ? `${candidateDocs.filter((d) => d.status === "missing").length} expected document(s) for this example are recorded as not provided. They stay on the card as gaps.`
-                    : "This example's documents are attached above with their full provenance."}
+                  {candidateDocs.filter((d) => d.status === "missing").length} expected document(s)
+                  for this example are recorded as not provided. They stay on the card as gaps.
                 </p>
               </div>
             )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getCardV2 } from "@/lib/mock/api";
@@ -10,8 +10,6 @@ import { SiteMatches } from "@/components/registry/SiteMatches";
 import { RegistryListing } from "@/components/card/RegistryListing";
 import { getCardBySlug } from "@/lib/mock/api";
 import type { ToolReadinessCard } from "@/lib/schemas/readiness-card";
-import { findDiscrepancies } from "@/lib/engine/assessment-run";
-import { getRegisteredSubmission, seededDeclaration } from "@/lib/mock/cards-v2";
 
 /**
  * S6 — the Readiness Card.
@@ -46,18 +44,6 @@ export default function CardPage() {
     };
   }, [slug, router]);
 
-  /**
-   * The same derivation the declaration and assessment steps use, so the three
-   * numbers on this page can never disagree.
-   */
-  const discrepancyCount = useMemo(() => {
-    if (!view) return undefined;
-    const registered = getRegisteredSubmission(slug);
-    const declaration = registered?.declaration ?? seededDeclaration(slug);
-    if (!declaration) return undefined;
-    return findDiscrepancies(declaration, view.evidence).length;
-  }, [view, slug]);
-
   if (loading) {
     return (
       <div className="flex justify-center py-24">
@@ -87,7 +73,6 @@ export default function CardPage() {
         tool={view.tool}
         evidence={view.evidence}
         contextIsReal={view.contextIsReal}
-        discrepancyCount={discrepancyCount}
       />
 
       {/* Two distinct vendor actions — do either or both */}

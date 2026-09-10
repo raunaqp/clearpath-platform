@@ -8,7 +8,6 @@ import { CARD_VERDICT_STYLE } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 import { CardHeaderBlock, ContextBlock } from "./CardHeaderBlock";
 import { GateSummaryChip } from "./GateSummaryChip";
-import { BodhScore } from "../BodhScore";
 import { ConditionsTable } from "./ConditionsTable";
 import { DimensionsTable } from "./DimensionsTable";
 import { Limitations } from "./Limitations";
@@ -45,19 +44,12 @@ export function ReadinessCardV2({
   tool,
   evidence,
   contextIsReal,
-  discrepancyCount,
   showRemediationLink = true,
 }: {
   card: ReadinessCard;
   tool: Tool;
   evidence: Evidence[];
   contextIsReal: boolean;
-  /**
-   * Discrepancies raised at declaration. Optional: a card read by a hospital
-   * from the registry has no declaration step behind it in that session, and a
-   * count with nothing to relate it to explains nothing.
-   */
-  discrepancyCount?: number;
   /** The vendor's own view offers remediation; a hospital's read-only view does not. */
   showRemediationLink?: boolean;
 }) {
@@ -96,23 +88,6 @@ export function ReadinessCardV2({
             <h2 className="mb-3 border-b border-[#D9D5C8] pb-1.5 font-serif text-xl text-[#0E1411]">
               Conditions
             </h2>
-            {/*
-              Three numbers appear across this flow — discrepancies raised at
-              declaration, gates not clear, conditions on the card — and without
-              a sentence tying them together a reader assumes one of them is
-              wrong. They are different things measured at different moments.
-            */}
-            {discrepancyCount !== undefined && (
-              <p className="mb-3 text-sm leading-relaxed text-[#6B766F]">
-                {discrepancyCount} {discrepancyCount === 1 ? "discrepancy was" : "discrepancies were"}{" "}
-                raised when the declaration was checked against the evidence.{" "}
-                {card.conditions.length === 0
-                  ? "None survived assessment as a condition."
-                  : `${card.conditions.length} ${card.conditions.length === 1 ? "became a condition" : "became conditions"}.`}{" "}
-                A discrepancy is a question about a claim; a condition is what an
-                assessment concluded still has to be closed.
-              </p>
-            )}
             <ConditionsTable conditions={card.conditions} />
           </section>
 
@@ -126,22 +101,6 @@ export function ReadinessCardV2({
               {card.scopeNote}
             </p>
           </section>
-
-          {/* Third-party validation input — NOT a readiness score */}
-          {tool.bodhScore && (
-            <section className="mt-8">
-              <h2 className="mb-1 border-b border-[#D9D5C8] pb-1.5 font-serif text-xl text-[#0E1411]">
-                BODH validation score
-              </h2>
-              <p className="mb-3 text-sm leading-relaxed text-[#6B766F]">
-                A third-party validation platform&apos;s measurement of the model. It is an INPUT to
-                the clinical and fairness gates, not a readiness verdict — the framework asks
-                whether the tool works here, which is a different question from whether the model
-                is accurate.
-              </p>
-              <BodhScore score={tool.bodhScore} />
-            </section>
-          )}
 
           {/* Evidence */}
           <section className="mt-8">

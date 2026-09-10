@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Upload, Trash2, Link2, AlertTriangle } from "lucide-react";
 import type { Evidence, EvidenceType, Independence } from "@/lib/schemas/evidence";
 import type { SubmissionContext } from "@/lib/schemas/context";
@@ -74,6 +74,19 @@ export function EvidenceManager({
   const fileRef = useRef<HTMLInputElement>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
+  /**
+   * A newly attached document opens itself. Provenance is the point of the
+   * screen and a file that lands collapsed reads as filed rather than as
+   * needing anything — true however it was attached, generic picker or a
+   * checklist row, which is why this lives here and not in the add handler.
+   */
+  const newest = docs[docs.length - 1]?.id ?? null;
+  const seen = useRef<string | null>(newest);
+  useEffect(() => {
+    if (newest && newest !== seen.current) setOpenId(newest);
+    seen.current = newest;
+  }, [newest]);
+
   /** Re-run the Phase 1 evidence engine over one document. */
   function evaluate(doc: DraftDoc): DraftDoc {
     return {
@@ -131,22 +144,24 @@ export function EvidenceManager({
 
   return (
     <div className="space-y-4">
-      {/* Upload */}
+      {/*
+        There is no generic "Choose file" here any more. Each expected document
+        gets its own attach control against its own checklist row, so a file
+        arrives already knowing which line it answers.
+      */}
       <div className="rounded-card border border-dashed border-teal-deep/40 bg-teal-light/20 px-5 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-ink">Attach a document</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted">
-              Uploaded files are held for this session only. Nothing is sent anywhere and nothing is
-              stored — the provenance you enter is what the assessment reads.
-            </p>
-          </div>
+        <p className="text-sm text-ink">Attach a document</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-muted">
+          Uploaded files are held for this session only. Nothing is sent anywhere and nothing is
+          stored — the provenance you enter is what the assessment reads.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="inline-flex shrink-0 items-center gap-2 rounded-md bg-teal-deep px-3 py-2 text-sm text-white transition-opacity hover:opacity-90"
+            className="inline-flex shrink-0 items-center gap-2 rounded-md border border-line bg-bg-card px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-bg-sink"
           >
-            <Upload className="h-4 w-4" /> Choose file
+            <Upload className="h-4 w-4" /> Something not on the checklist
           </button>
           <input
             ref={fileRef}
@@ -169,8 +184,7 @@ export function EvidenceManager({
 
       {docs.length === 0 ? (
         <p className="rounded-card border border-line bg-bg-card px-4 py-6 text-sm text-muted">
-          Nothing attached yet. Attach your own documents above — the checklist opposite says what
-          this kind of submission is expected to bring.
+          Nothing attached yet. Attach against a checklist line above.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -197,11 +211,6 @@ export function EvidenceManager({
                       </span>
                       {doc.file && <><span>·</span><span>held in memory</span></>}
                     </p>
-                    {doc.generalisability.limited && doc.generalisability.reason && (
-                      <p className="mt-1.5 rounded-md bg-[#FAEEDA] px-2.5 py-1.5 text-xs leading-relaxed text-[#BA7517]">
-                        {doc.generalisability.reason}
-                      </p>
-                    )}
                   </button>
                   <div className="flex shrink-0 items-center gap-2">
                     {doc.objectUrl && (

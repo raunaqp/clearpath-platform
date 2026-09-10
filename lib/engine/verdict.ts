@@ -251,11 +251,7 @@ export function buildCouldNotEstablish(
     const item = getItem(id);
     if (!item) continue;
     const label = item.legacyGateId ? `${item.legacyGateId} · ${id}` : id;
-    out.push(
-      softenCertainty(
-        `${label} — ${item.text} No submitted evidence establishes this either way.`
-      )
-    );
+    out.push(softenCertainty(`${label} — ${item.text}`));
   }
 
   const items = itemsForPath(path);
@@ -266,7 +262,7 @@ export function buildCouldNotEstablish(
     const name = clusterName(code);
     out.push(
       softenCertainty(
-        `Nothing in ${name} (${code}) was assessed — those ${inCluster.length} items are not yet authored, so this card is silent on them rather than reassuring.`
+        `${name} (${code}) — ${inCluster.length} ${inCluster.length === 1 ? "item" : "items"}`
       )
     );
   }
@@ -480,7 +476,7 @@ export function computeExpiresAt(
       expiresAt: new Date(licence).toISOString(),
       source: "regulatory_licence",
       note: softenCertainty(
-        `Expiry set by the earliest regulatory licence bound to a D1.D item (${licence.slice(0, 10)}), which falls before the 12-month default.`
+        `regulatory licence, ${licence.slice(0, 10)} — earlier than the 12-month default.`
       ),
     };
   }
@@ -488,9 +484,7 @@ export function computeExpiresAt(
   return {
     expiresAt: twelve.toISOString(),
     source: "twelve_month_default",
-    note: softenCertainty(
-      "Expiry set by the 12-month default; no regulatory licence bound to a D1.D item expires sooner."
-    ),
+    note: softenCertainty("the 12-month default."),
   };
 }
 

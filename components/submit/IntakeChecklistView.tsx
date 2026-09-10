@@ -1,8 +1,10 @@
 import type { EvidenceType } from "@/lib/schemas/evidence";
 import type { SubmissionContext } from "@/lib/schemas/context";
 import type { ToolCategory } from "@/lib/schemas/tool";
+import type { ChecklistLine } from "@/lib/engine/intake-checklist";
 import { buildIntakeChecklist, computeCoverage } from "@/lib/engine/intake-checklist";
-import { Check } from "lucide-react";
+import { Check, Paperclip } from "lucide-react";
+import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,11 +26,18 @@ export function IntakeChecklistView({
   context,
   attached,
   compact,
+  onAttach,
 }: {
   category: ToolCategory;
   context: SubmissionContext;
   attached: { type: EvidenceType }[];
   compact?: boolean;
+  /**
+   * Given, each line gets its own attach control. A file arriving this way
+   * already knows which line it answers and what type that line accepts,
+   * which one generic picker at the bottom of the screen could never tell.
+   */
+  onAttach?: (line: ChecklistLine, files: FileList | null) => void;
 }) {
   const groups = buildIntakeChecklist({ category, context });
   const coverage = computeCoverage(groups, attached);
@@ -69,7 +78,7 @@ export function IntakeChecklistView({
                   >
                     {covered && <Check className="h-3 w-3" />}
                   </span>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2 text-sm text-ink">
                       {line.label}
                       {!line.required && (
@@ -85,12 +94,55 @@ export function IntakeChecklistView({
                       accepts {line.accepts.map((a) => a.toLowerCase().replace(/_/g, " ")).join(", ")}
                     </p>
                   </div>
+                  {onAttach && <LineAttach line={line} covered={covered} onAttach={onAttach} />}
                 </li>
               );
             })}
           </ul>
         </section>
       ))}
+    </div>
+  );
+}
+
+/** The per-row attach control. One hidden input per line, so the file that
+ *  arrives is typed to the line it was attached against. */
+function LineAttach({
+  line,
+  covered,
+  onAttach,
+}: {
+  line: ChecklistLine;
+  covered: boolean;
+  onAttach: (line: ChecklistLine, files: FileList | null) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div className="shrink-0">
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+          covered
+            ? "border-line text-ink-2 hover:bg-bg-sink"
+            : "border-teal-deep/40 bg-teal-light/30 text-teal-deep hover:bg-teal-light/60"
+        )}
+      >
+        <Paperclip className="h-3 w-3" />
+        {covered ? "Attach another" : "Attach"}
+      </button>
+      <input
+        ref={ref}
+        type="file"
+        multiple
+        className="hidden"
+        aria-label={`Attach a document for ${line.label}`}
+        onChange={(e) => {
+          onAttach(line, e.target.files);
+          if (ref.current) ref.current.value = "";
+        }}
+      />
     </div>
   );
 }

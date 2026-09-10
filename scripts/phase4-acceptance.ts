@@ -37,12 +37,25 @@ const rs = runAssessment({ declaration: RETINASCAN_DECLARATION, evidence: RETINA
 eq("RetinaScan still routes to human review", rs.outcome, "UNDER_ASSESSMENT");
 
 const wizardSrc = readFileSync("app/submit/page.tsx", "utf8");
-ok("S1 collects a tool version", wizardSrc.includes('label="Tool version"'));
-ok("S1 collects a model version", wizardSrc.includes('label="Model version"'));
-ok("a fresh submission no longer hardcodes 'not stated' as the tool version", !wizardSrc.includes('toolVersion: form.toolName,'));
+/**
+ * S1 no longer ASKS for a tool or model version — both fields are removed.
+ * The card header falls back to the tool name for "Tool" and omits the "Model"
+ * row entirely rather than printing "not stated" at a hospital reader.
+ */
+ok("S1 no longer collects a tool version", !wizardSrc.includes('label="Tool version"'));
+ok("S1 no longer collects a model version", !wizardSrc.includes('label="Model version"'));
+ok("the card header falls back to the tool name, not 'not stated'",
+  wizardSrc.includes("form.toolVersion ? `${form.toolName} ${form.toolVersion}` : form.toolName")
+    && !wizardSrc.includes('modelVersion: form.modelVersion || "not stated"'));
+ok("…and the header omits Model rather than printing an empty one",
+  readFileSync("components/card/v2/CardHeaderBlock.tsx", "utf8")
+    .includes("card.modelVersion ? <Field label=\"Model\" value={card.modelVersion} /> : null"));
 
 const cardSrc = readFileSync("components/card/v2/ReadinessCardV2.tsx", "utf8");
-ok("the card explains discrepancies vs conditions", /A discrepancy is a question about a claim; a condition is what an\s+assessment concluded still has to be closed/.test(cardSrc));
+// The discrepancy-vs-condition explainer is REMOVED. It argued a design
+// decision at the reader instead of telling them anything about their tool.
+ok("the card no longer explains discrepancies vs conditions at the reader",
+  !/A discrepancy is a question about a claim/.test(cardSrc) && !cardSrc.includes("discrepancyCount"));
 
 // ═════════════════════════════════════════════════════════════════════════
 section("1. Legacy card migration");
@@ -73,7 +86,9 @@ const chipTotal = v1.gateSummary.pass + v1.gateSummary.fail + v1.gateSummary.uns
 eq("gateSummary yields '15 / 17 gates clear'", [v1.gateSummary.pass, chipTotal], [15, 17]);
 ok("the chip renders that from gateSummary", readFileSync("components/card/v2/GateSummaryChip.tsx", "utf8").includes("gates clear"));
 ok("the v2 card carries 'Assessment across four dimensions'", cardSrc.includes("Assessment across four dimensions"));
-ok("…and the BODH block /hospital depends on", cardSrc.includes("BODH validation score"));
+// The BODH block is removed from the card: a third-party model score sitting
+// inside a readiness card reads as part of the verdict, which it never was.
+ok("…and no BODH block, which read as part of the verdict", !cardSrc.includes("BODH validation score"));
 ok("…and the evidence heading /hospital waits on", cardSrc.includes("Attached evidence"));
 ok("no composite score field exists on the v2 card", !("overallScore" in (v1 as object)));
 ok("VerdictComparison shows gates, not a vendor composite",

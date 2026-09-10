@@ -301,12 +301,15 @@ try {
   for (let i = 0; i < 20 && !pdfName; i++) { await sleep(300); pdfName = readdirSync(DL).find((f) => f.endsWith(".pdf")); }
   ok("a real PDF file downloaded", !!pdfName, pdfName || "none");
 
-  console.log("\n── BODH: score on card + pre-fills fairness gate ──");
+  console.log("\n── Declaration: 17 questions, no BODH, no pre-fill ──");
+  // BODH is REMOVED from both the card and the wizard. A third-party model
+  // score on a readiness card reads as part of the verdict, and a button that
+  // pre-fills three gates from it answers the innovator's declaration for them.
+  // These assertions now hold the removal in place rather than the feature.
   await goto(page, "/hospital/cerviai");
-  await waitText(page, "bodh validation score");
+  await waitText(page, "attached evidence");
   t = await body(page);
-  ok("BODH validation score shows on the card", t.includes("bodh validation score") && t.includes("accuracy"));
-  // Wizard pre-fill (vendor role): fresh tool, no answers → pre-fill sets 3 gates.
+  ok("no BODH validation score on the card", !t.includes("bodh validation score"));
   await page.evaluate(() => localStorage.setItem("clearpath-role", "vendor"));
   await goto(page, "/submit");
   await clickText(page, "Begin");
@@ -316,11 +319,12 @@ try {
   await clickText(page, "Continue");        // → Reports
   await sleep(700);
   await clickText(page, "Continue");        // → Questions
-  await page.waitForFunction(() => document.body.innerText.toLowerCase().includes("bodh validation score"), { timeout: 8000 });
-  await clickText(page, "Pre-fill clinical + fairness gates");
-  await page.waitForFunction(() => document.body.innerText.includes("3/17 answered"), { timeout: 6000 }).catch(() => {});
+  // Same navigation path, same asserted N/17 literal — it starts at 0 now that
+  // nothing pre-fills it.
+  await page.waitForFunction(() => document.body.innerText.includes("0/17 answered"), { timeout: 8000 });
   t = await body(page);
-  ok("BODH pre-fills clinical + fairness gates (3/17 answered)", t.includes("3/17 answered"));
+  ok("declaration opens at 0/17 answered, nothing pre-filled", t.includes("0/17 answered"));
+  ok("no BODH panel or pre-fill button on the declaration", !t.includes("bodh validation score") && !t.includes("pre-fill clinical"));
 
   console.log("\n── ROLE SCOPE: vendor light dashboard vs hospital full workspace ──");
   await page.evaluate(() => localStorage.setItem("clearpath-role", "vendor"));

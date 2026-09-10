@@ -23,6 +23,10 @@ export function Limitations({ card }: { card: ReadinessCard }) {
           scope note above for what the demo does not reach.
         </p>
       ) : (
+        <>
+        <p className="mb-3 text-sm leading-relaxed text-[#6B766F]">
+          No evidence in this submission establishes these either way. The card is silent on them.
+        </p>
         <ul className="space-y-2.5">
           {card.couldNotEstablish.map((line) => (
             <li key={line} className="flex gap-2.5 text-sm leading-relaxed text-[#0E1411]">
@@ -31,6 +35,7 @@ export function Limitations({ card }: { card: ReadinessCard }) {
             </li>
           ))}
         </ul>
+        </>
       )}
     </section>
   );

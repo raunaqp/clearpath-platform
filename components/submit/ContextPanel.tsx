@@ -175,33 +175,6 @@ export function ContextPanel({
         </div>
       )}
 
-      {/* The claim */}
-      <Row
-        label="Exact claim being assessed"
-        hint="One sentence. Everything downstream is scoped by this line, so it is not the place for marketing."
-      >
-        <textarea
-          className={cn(inputCls, "min-h-[64px]")}
-          value={context.exactClaim}
-          onChange={(e) => set("exactClaim", e.target.value)}
-          placeholder="What the tool does, for whom, at what level of care, and whether it decides anything"
-        />
-      </Row>
-
-      <Row
-        label="Out of scope"
-        hint="Comma separated. What this tool is NOT for — worth more declared now than added after you see a result."
-      >
-        <input
-          className={inputCls}
-          value={context.outOfScope.join(", ")}
-          onChange={(e) =>
-            set("outOfScope", e.target.value.split(",").map((x) => x.trim()).filter(Boolean))
-          }
-          placeholder="e.g. pregnancy, post-treatment surveillance"
-        />
-      </Row>
-
       {/* Setting */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Row label="Procurement path">
@@ -232,7 +205,7 @@ export function ContextPanel({
         </Row>
       </div>
 
-      <Row label="Deployment modes" hint="More than one is normal — the same device in a camp and again in the clinic queue.">
+      <Row label="Deployment modes">
         <div className="flex flex-wrap gap-2">
           {MODES.map((m) => {
             const on = context.deploymentModes.includes(m);

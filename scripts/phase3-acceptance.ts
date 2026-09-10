@@ -207,8 +207,14 @@ ok("the band stays live (derived, not gated behind Generate)", submitSrc.include
  */
 ok("the answered count renders as N/17, preserving the asserted literal",
   submitSrc.includes("{answeredCount}/17 answered"));
-ok("the BODH panel survives on this screen (browser suite waits on it, uncaught)",
-  submitSrc.includes("BODH validation score") && submitSrc.includes("Pre-fill clinical + fairness gates"));
+/**
+ * The BODH panel and its "Pre-fill clinical + fairness gates" button were
+ * REMOVED from this screen. The 17 questions stay, and they are answered by
+ * hand — a pre-fill from a third-party model score was answering the
+ * innovator's declaration on the innovator's behalf.
+ */
+ok("the BODH panel and its pre-fill button are gone from the declaration",
+  !submitSrc.includes("BODH validation score") && !submitSrc.includes("Pre-fill clinical + fairness gates"));
 
 const gaps = declarationsExceedingEvidence(CERVIAI_DECLARATION, CERVIAI_EVIDENCE);
 ok("the exceeds count is derived, not hardcoded", gaps.every((g) => g.declared > g.supported));
