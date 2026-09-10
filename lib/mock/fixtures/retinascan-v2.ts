@@ -133,6 +133,24 @@ const SEEDS: Seed[] = [
     path: "/sample-docs/retinascan-validation-study.pdf",
   },
   {
+    // Filed and bound to the regulatory gate. RetinaScan's remaining gaps are
+    // about BINDINGS, not missing documents — which is what makes it resolvable
+    // by clarification rather than by a new submission.
+    id: "ev-retinascan-cdsco",
+    itemRefs: [legacyGateToItemId("G4")!],
+    type: "REGULATORY",
+    independence: "INDEPENDENT",
+    name: "CDSCO licence — diabetic retinopathy screening",
+    generatedBy: "CDSCO",
+    setting: "primary health centre",
+    cadre: "staff nurse",
+    sampleN: null,
+    documentDate: "2026-02-18",
+    validUntil: "2028-02-18",
+    limitation: null,
+    path: "/sample-docs/retinascan-dpdp-policy.pdf",
+  },
+  {
     id: "ev-retinascan-dpdp",
     itemRefs: [legacyGateToItemId("G14")!, legacyGateToItemId("G15")!],
     type: "AUDIT",

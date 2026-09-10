@@ -58,30 +58,67 @@ export type DiscrepancyInput = {
   scores: Map<string, ItemScore>;
   evidence: Evidence[];
   path: "PUBLIC" | "PRIVATE";
+  /**
+   * What the DOCUMENTS bound to an item can carry, where no AI or assessor has
+   * scored it. Without this the ranking is blind on a self-declared submission:
+   * every gate looks equally unsupported and the five questions come out in
+   * alphabetical order.
+   */
+  supportsFromEvidence?: (itemId: string) => Level | null;
+  /**
+   * Item ids currently stopping this submission from issuing — the unsupported
+   * gates from the assessment run. Questions about these come first.
+   */
+  blockingItemIds?: string[];
 };
 
 /**
- * Materiality — what makes one gap worth asking about before another.
- * Gate items first, then by gap size, as specified.
+ * Materiality — what makes one gap worth spending one of five questions on.
  *
  *   +100  the item is a gate at all
+ *   +50   this gate is BLOCKING the submission from issuing
  *   +10   per level of gap between the claim and what the evidence reaches
- *   +5    no evidence was found at all — a small tie-breaker on top of the
- *         gap, because a claim with nothing behind it is marginally worse
- *         than one merely optimistic. Deliberately small: it must not let a
- *         one-level unevidenced claim outrank a two-level contradicted one.
+ *   -20   NOTHING is on file for this gate
+ *
+ * THE PENALTY FOR "NOTHING ON FILE" IS DELIBERATE, and it reverses an earlier
+ * tie-breaker that added for it.
+ *
+ * The two rules were measuring different things. For SEVERITY, a claim with
+ * nothing behind it is worse. But this ranking decides which questions get
+ * ASKED, and there the criterion is answerability: a gap against a document
+ * that exists can be closed by an answer — the vendor points at section 4 and
+ * the assessment can check. "You sent us nothing" produces "we will send
+ * something", which resolves nothing and burns one of five slots.
+ *
+ * Left as it was, every unevidenced gate tied at the top and the five questions
+ * came out in alphabetical order — G10, G11, G12, G13, G14 — which is not a
+ * ranking at all.
+ *
+ * BLOCKING DOMINATES BOTH. Ask first about what is actually holding the
+ * submission up. Answerability decides the order among gates that are merely
+ * imperfect; it must not outrank a gate that is the reason nothing has issued.
+ * These two rules together are what make a clean submission and a held one both
+ * ask the right five questions, rather than one being tuned at the other's
+ * expense.
  */
-function materialityOf(item: AssessmentItem, claimed: Level, supports: Level | null): number {
+function materialityOf(
+  item: AssessmentItem,
+  claimed: Level,
+  supports: Level | null,
+  blocking: boolean
+): number {
   const gap = claimed - (supports ?? 0);
   let m = item.isGate ? 100 : 0;
+  if (blocking) m += 50;
   m += Math.max(0, gap) * 10;
-  if (supports === null) m += 5;
+  if (supports === null) m -= 20;
   return m;
 }
 
 export function findDiscrepancies(input: DiscrepancyInput): Discrepancy[] {
   const out: Discrepancy[] = [];
   const withEvidence = itemsWithEvidence(input.evidence);
+  const blocking = new Set(input.blockingItemIds ?? []);
 
   for (const [gateId, claimed] of Object.entries(input.selfDeclaration.gateAnswers)) {
     if (claimed === undefined) continue;
@@ -92,9 +129,11 @@ export function findDiscrepancies(input: DiscrepancyInput): Discrepancy[] {
     const score = input.scores.get(item.id);
     // No evidence bound to the item, or nothing scored it → nothing supports it.
     const supports: Level | null =
-      !withEvidence.has(item.id) || !score
+      !withEvidence.has(item.id)
         ? null
-        : score.adjudicated ??
+        : !score
+          ? (input.supportsFromEvidence?.(item.id) ?? null)
+          : score.adjudicated ??
           (score.assessorScores.length > 0
             ? (Math.round(
                 score.assessorScores.reduce((s, a) => s + a.level, 0) /
@@ -111,7 +150,7 @@ export function findDiscrepancies(input: DiscrepancyInput): Discrepancy[] {
       itemId: item.id,
       claimed,
       evidenceSupports: supports,
-      materiality: materialityOf(item, claimed, supports),
+      materiality: materialityOf(item, claimed, supports, blocking.has(item.id)),
     });
   }
 
