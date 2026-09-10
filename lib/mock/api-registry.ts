@@ -46,3 +46,8 @@ export const getListing = (slug: string): Promise<Listing | undefined> =>
 
 export const getSiteProfiles = (): Promise<SiteOperatingProfile[]> => latency(SITE_PROFILES);
 export const getProblemRegisters = (): Promise<ProblemRegister[]> => latency(PROBLEM_REGISTERS);
+
+export const getSiteProfile = (hospitalId: string): Promise<SiteOperatingProfile | undefined> =>
+  latency(SITE_PROFILES.find((p) => p.hospitalId === hospitalId));
+export const getProblemRegister = (hospitalId: string): Promise<ProblemRegister | undefined> =>
+  latency(PROBLEM_REGISTERS.find((r) => r.hospitalId === hospitalId));

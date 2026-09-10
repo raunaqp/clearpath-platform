@@ -305,7 +305,16 @@ export function createDeploymentRequest(input: CreateRequestInput): DeploymentRe
     );
   }
 
-  const at = input.at ?? new Date().toISOString();
+  /**
+   * Default to the day facilitation completed, not "now".
+   *
+   * A request can only be made once both sides indicated willingness, so that
+   * date is the honest default — and it keeps the demo's dates stable instead
+   * of stamping whatever day the browser happens to be run on into the middle
+   * of a September 2026 story.
+   */
+  const willing = facilitation.entries.find((e) => e.step === "BOTH_SIDES_WILLING");
+  const at = input.at ?? willing?.at ?? new Date().toISOString();
   const request: DeploymentRequest = {
     id: `request-${input.slug}`,
     facilitationId: facilitation.id,
