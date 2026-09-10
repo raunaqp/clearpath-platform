@@ -19,7 +19,8 @@
     "verify:phase5:browser": "node scripts/phase5-browser.mjs",
     "verify:phase5": "tsx scripts/phase5-acceptance.ts",
     "verify:phase6a": "tsx scripts/phase6a-acceptance.ts",
-    "verify:phase6b": "tsx scripts/phase6b-acceptance.ts"
+    "verify:phase6b": "tsx scripts/phase6b-acceptance.ts",
+    "verify:phase6c": "tsx scripts/phase6c-acceptance.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
