@@ -242,6 +242,67 @@ export const PROBLEM_REGISTERS: ProblemRegister[] = [
   },
 ];
 
+/**
+ * Kaveri — the middle band. Everything the card needs is present EXCEPT power:
+ * 4h of backup against the 8h a camp day requires. Offline capture works and
+ * the colposcopy pathway exists, so nothing here is a blocking failure — it is
+ * a gap with a purchase order attached.
+ */
+SITE_PROFILES.push({
+  hospitalId: "hosp-kaveri",
+  baselinedAt: SITE_PROFILE_BASELINED_AT,
+  archetype:
+    "A district hospital running cervical screening camps across its own block. " +
+    "Representative of a site that fits on everything but one closable constraint.",
+  facility: { type: "District hospital", catchment: "6 camp sites across the block" },
+  digital: { emrPresent: true, fhirSurfaceAvailable: false, abdmParticipating: true },
+  staffing: {
+    releasableOperators: 8,
+    operatorCadre: "STAFF_NURSE",
+    trainingCapacityHours: 6,
+    clinicianSupervisionOnSite: true,
+  },
+  governance: { dpoAppointed: true, dpiaProcessInPlace: true, incidentRouteDefined: true },
+  careLevels: ["DISTRICT_HOSPITAL", "CHC", "PHC"],
+  cadres: ["STAFF_NURSE", "ANM", "MO"],
+  deploymentModes: ["CAMP", "OPD_QUEUE"],
+  infrastructure: {
+    // THE GAP. Everything else clears.
+    powerBackupHours: 4,
+    connectivity: "intermittent",
+    offlineCaptureSupported: true,
+    referralPathways: ["colposcopy", "TB confirmatory"],
+    devices: ["colposcope", "tablets"],
+    powerNote: "4h backup at the base hospital; camp sites run on a shared generator.",
+  },
+});
+
+/**
+ * Kaveri's register. Cervical screening is ranked #3 — lower than Northvale's
+ * #2, which is itself a real signal to a vendor choosing where to start.
+ */
+PROBLEM_REGISTERS.push({
+  hospitalId: "hosp-kaveri",
+  publishedAt: PROBLEM_REGISTER_PUBLISHED_AT,
+  entries: [
+    { id: "pr-kaveri-tb", rank: 1, name: "Tuberculosis case finding", volumePerYear: 2400, currentPathway: "Symptom screening then sputum." },
+    { id: "pr-kaveri-anaemia", rank: 2, name: "Antenatal anaemia", volumePerYear: 3100, currentPathway: "Venous haemoglobin sent to the district lab." },
+    {
+      id: "pr-kaveri-cervical-screening",
+      rank: 3,
+      name: "Cervical screening",
+      description: "Camp screening yield low, colposcopy referral slow across the block.",
+      serviceLine: "Block screening camps",
+      volumePerYear: 1800,
+      currentPathway: "VIA by staff nurse, colposcopy referral to the district hospital.",
+      currentMetric: "16-day mean colposcopy turnaround",
+      constraint: "Camps run on a shared generator; no additional nurse time per patient.",
+      successDefinition:
+        "Improved detection of referable abnormalities without increasing nurse workload, with referral completion at or above 75%.",
+    },
+  ],
+});
+
 export function getSiteProfile(hospitalId: string): SiteOperatingProfile | undefined {
   return SITE_PROFILES.find((p) => p.hospitalId === hospitalId);
 }

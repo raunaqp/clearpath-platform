@@ -36,6 +36,12 @@ import {
   RETINASCAN_TOOL_VERSION,
 } from "./fixtures/retinascan-v2";
 import {
+  CHESTXR_CONTEXT, CHESTXR_DECLARATION, CHESTXR_EVIDENCE,
+  OVARESERVE_CONTEXT, OVARESERVE_DECLARATION, OVARESERVE_EVIDENCE,
+  SYMPTOMBOT_CONTEXT, SYMPTOMBOT_DECLARATION, SYMPTOMBOT_EVIDENCE,
+  EMBRYOGRADE_CONTEXT, EMBRYOGRADE_DECLARATION, EMBRYOGRADE_EVIDENCE,
+} from "./fixtures/coverage-v2";
+import {
   CERVIAI_CONTEXT,
   CERVIAI_DECLARATION,
   CERVIAI_EVIDENCE,
@@ -278,6 +284,38 @@ const SEEDED: Record<string, SeededSetup> = {
     issuedAt: CERVIAI_ISSUED_AT,
     toolVersion: CERVIAI_TOOL_VERSION,
     modelVersion: CERVIAI_MODEL_VERSION,
+  },
+  chestxr: {
+    context: CHESTXR_CONTEXT,
+    declaration: CHESTXR_DECLARATION,
+    evidence: CHESTXR_EVIDENCE,
+    issuedAt: "2026-09-15T00:00:00.000Z",
+    toolVersion: "ChestXR-TB 3.1",
+    modelVersion: "chestxr-tb-2026.05",
+  },
+  ovareserve: {
+    context: OVARESERVE_CONTEXT,
+    declaration: OVARESERVE_DECLARATION,
+    evidence: OVARESERVE_EVIDENCE,
+    issuedAt: "2026-09-15T00:00:00.000Z",
+    toolVersion: "OvaReserve 1.2",
+    modelVersion: "ova-reserve-2026.02",
+  },
+  symptombot: {
+    context: SYMPTOMBOT_CONTEXT,
+    declaration: SYMPTOMBOT_DECLARATION,
+    evidence: SYMPTOMBOT_EVIDENCE,
+    issuedAt: "2026-09-15T00:00:00.000Z",
+    toolVersion: "SymptomBot 0.9",
+    modelVersion: "symptombot-2026.01",
+  },
+  embryograde: {
+    context: EMBRYOGRADE_CONTEXT,
+    declaration: EMBRYOGRADE_DECLARATION,
+    evidence: EMBRYOGRADE_EVIDENCE,
+    issuedAt: "2026-09-15T00:00:00.000Z",
+    toolVersion: "EmbryoGrade AI 2.0",
+    modelVersion: "embryo-grade-2026.04",
   },
   [RETINASCAN_TOOL_SLUG]: {
     context: RETINASCAN_CONTEXT,

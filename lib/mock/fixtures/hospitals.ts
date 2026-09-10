@@ -73,4 +73,23 @@ export const HOSPITALS: Hospital[] = [
     buyerType: "private", // private commercial IVF centre — investment-case buyer
     siteReadiness: runSiteAssessment(LAKEVIEW_DOMAINS), // → TIER_B (trial-ready)
   },
+  /**
+   * The MIDDLE BAND, which nothing reached before.
+   *
+   * Strong match and Not eligible are the easy cases. Kaveri is the one the
+   * product's argument actually rests on: everything fits except one thing the
+   * SITE can close — 4h of power backup against the 8h a camp day needs. A
+   * generator is a purchase order, not a reason to walk away, and a matching
+   * screen that can only say "yes" or "no" cannot express that.
+   */
+  {
+    id: "hosp-kaveri",
+    name: "Kaveri District Hospital",
+    tier: "tier2",
+    location: "Erode, Tamil Nadu",
+    focus: "District hospital running cervical screening camps across its block.",
+    acceptsCareLevels: ["secondary", "primary", "community"],
+    seeking: ["screening", "point-of-care"],
+    siteReadiness: runSiteAssessment(LAKEVIEW_DOMAINS), // → TIER_B (trial-ready)
+  },
 ];

@@ -71,8 +71,23 @@ export type Generalisability = z.infer<typeof GeneralisabilitySchema>;
 export const EvidenceSchema = z.object({
   id: z.string(),
   submissionId: z.string(),
-  /** Which assessment items this document is offered against. Min 1. */
-  itemRefs: z.array(z.string()).min(1),
+  /**
+   * Which assessment items this document is offered against.
+   *
+   * EMPTY IS ALLOWED, and it means "filed but bound to nothing" — which counts
+   * for nothing, everywhere. The schema used to forbid it with `.min(1)`, but
+   * the evidence upload has always been able to produce one (it warns "counts
+   * for nothing" the moment you attach without binding), so the constraint
+   * described a state the product could reach and the type said could not
+   * exist. Worse, it made the rule undemonstrable: the clearest way to show
+   * that binding is what makes a document count is to put an unbound one on
+   * screen and watch it change nothing.
+   *
+   * Nothing downstream needs a guard for it. `itemsWithEvidence` simply never
+   * sees an unbound document, so it is absent from every denominator by
+   * construction rather than by exclusion.
+   */
+  itemRefs: z.array(z.string()),
   type: EvidenceTypeEnum,
   independence: IndependenceEnum,
   name: z.string(),
