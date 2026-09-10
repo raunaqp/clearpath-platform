@@ -10,6 +10,7 @@
     "engine:smoke": "tsx scripts/engine-smoke.ts",
     "docs:gen": "tsx scripts/gen-sample-docs.ts",
     "verify:browser": "node scripts/browser-verify.mjs",
+    "verify:all": "node scripts/verify-all.mjs",
     "verify:phase1": "tsx scripts/phase1-acceptance.ts",
     "verify:phase2": "tsx scripts/phase2-acceptance.ts",
     "verify:phase3": "tsx scripts/phase3-acceptance.ts",

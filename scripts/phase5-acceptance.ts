@@ -17,6 +17,7 @@ import { AuditStateEnum } from "@/lib/schemas/submission";
 import { submissionStage } from "@/lib/stages";
 import type { Submission } from "@/lib/schemas/submission";
 import type { CreateRequestInput } from "@/lib/mock/handoff";
+import { getProblemRegister } from "@/lib/mock/fixtures/site-profiles";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "✓" : "✗"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -151,6 +152,17 @@ eq("data export formats", req.dataExport.formats, ["CSV", "FHIR bundle"]);
 eq("…with no notice period", req.dataExport.noticePeriodDays, 0);
 eq("model frozen, change is stop-and-review", [req.modelPolicy.frozenForDuration, req.modelPolicy.onChange], [true, "STOP_AND_REVIEW"]);
 eq("it carries the exact card version the hospital must act on", req.cardVersion, "v1.0");
+
+/** The register entry the tool claims to address — by id, not prose. */
+eq("it names the problem-register entry by id", req.problemRegisterEntryId, "pr-northvale-cervical-screening");
+const entry = getProblemRegister("hosp-northvale")!.entries.find((e) => e.id === req.problemRegisterEntryId);
+ok("…and the id resolves in the site's own register", !!entry);
+eq("…to the entry the matching screen and the facilitation pack name", [entry?.name, entry?.rank], ["Cervical screening", 2]);
+ok("the id is stable against re-ranking — it is not derived from rank",
+  !(req.problemRegisterEntryId ?? "").includes(String(entry?.rank)));
+ok("all three surfaces use ONE mapper",
+  readFileSync("lib/mock/handoff.ts", "utf8").includes("findProblem(") &&
+  readFileSync("app/submit/[id]/request/page.tsx", "utf8").includes("findProblem("));
 eq("status on send", req.status, "SENT");
 eq("no hospital response yet", req.hospitalResponse, null);
 

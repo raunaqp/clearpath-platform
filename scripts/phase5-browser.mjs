@@ -106,6 +106,9 @@ try {
   ok("mode is trial", /structured request · trial/i.test(t));
   ok("the question", /increase detection of referable abnormalities at CHC level without increasing nurse workload/i.test(t));
   ok("scope", /4 CHCs · 90 days · 1,000 women · staff nurse operators/i.test(t));
+  ok("it names the problem-register entry it addresses",
+    /cervical screening — ranked #2 on/i.test(t) && /3,400 per year/i.test(t));
+  ok("…by a stable id intake can look up", /pr-northvale-cervical-screening/.test(t));
   ok("support taper", /on-site weeks 1–2 · weekly weeks 3–6 · on-call from week 7/i.test(t));
   ok("devices", /4 tablets with offline capture · replacement within 72 hours/i.test(t));
   ok("training", /6 hours per nurse · 12 nurses/i.test(t));
