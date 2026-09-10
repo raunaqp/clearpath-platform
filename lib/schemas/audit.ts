@@ -29,7 +29,7 @@ export const AuditResultSchema = z.object({
   /**
    * A COUNT OF DISCRETE FINDINGS, not a composite.
    *
-   * This replaced `score`, a 0-100 mean of thirteen heterogeneous gates. That
+   * This replaced `score`, a 0-100 mean of fourteen heterogeneous gates. That
    * number sat beside a vendor card which refuses to average anything, on the
    * one screen where a hospital decides whether to trust either — two panels,
    * one declining to reduce a verdict to a figure and the other doing exactly

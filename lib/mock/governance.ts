@@ -55,7 +55,7 @@ export function resetGovernance() {
 // ═════════════════════════════════════════════════════════════════════════
 
 /**
- * Named owners against Northvale's 13 intake gates.
+ * Named owners against Northvale's 14 intake gates.
  *
  * Four carry the findings the committee discussed; the other nine were cleared
  * by the members whose remit they fall in. Every one has a person against it —
@@ -63,7 +63,8 @@ export function resetGovernance() {
  * six months later.
  */
 export const NORTHVALE_ASSIGNMENTS: AuditAssignment[] = [
-  { gateId: "H8", ownerName: "R. Venkatesan", ownerRole: "Data Protection Officer", evidence: "DPDP privacy policy; camp consent procedure reviewed against our own." },
+  { gateId: "H14", ownerName: "R. Venkatesan", ownerRole: "Data Protection Officer", evidence: "DPDP privacy policy; camp consent procedure reviewed against our own." },
+  { gateId: "H8", ownerName: "R. Venkatesan", ownerRole: "Data Protection Officer", evidence: "Service agreement — the hospital retains ownership of its records." },
   { gateId: "H7", ownerName: "K. Sundaram", ownerRole: "Information security lead", evidence: "Integration specification; security posture checked against institutional policy." },
   { gateId: "H5", ownerName: "Dr. Meera Krishnan", ownerRole: "Consultant Gynaecologist", evidence: "Colposcopy on site, 11-day mean turnaround from the problem register." },
   { gateId: "H6", ownerName: "Dr. P. Raghunathan", ownerRole: "Medical Superintendent", evidence: "Camp rota and nurse release capacity from the site profile." },
@@ -81,19 +82,20 @@ export const NORTHVALE_ASSIGNMENTS: AuditAssignment[] = [
 /**
  * Northvale's own answers. Two conditional, eleven pass.
  *
- * H8 is conditional because the vendor's consent flow assumes a digital capture
- * this hospital does not use in camps — the finding the divergence panel is
- * built on. H6 is conditional because the release is real but the rota has to
- * move to accommodate it.
+ * H14 is conditional because the vendor's consent flow assumes a digital
+ * capture this hospital does not use in camps — the finding the divergence
+ * panel is built on, and now carried on the CONSENT gate rather than on data
+ * ownership, which is a different question. H6 is conditional because the
+ * release is real but the rota has to move to accommodate it.
  */
 export const NORTHVALE_AUDIT_ANSWERS = {
   H1: "pass", H2: "pass", H3: "pass", H4: "pass", H5: "pass",
-  H6: "partial", H7: "pass", H8: "partial", H9: "pass",
+  H6: "partial", H7: "pass", H8: "pass", H14: "partial", H9: "pass",
   H10: "pass", H11: "pass", H12: "pass", H13: "pass",
 } as const;
 
 export const NORTHVALE_AUDIT_NOTES: Record<string, string> = {
-  H8: "Camp consent must be taken in Tamil, on paper, before image capture. The vendor's flow assumes digital capture at the point of consent, which we do not use in camps.",
+  H14: "Camp consent must be taken in Tamil, on paper, before image capture. The vendor's flow assumes digital capture at the point of consent, which we do not use in camps.",
   H6: "12 nurses released for 6h; the camp rota is adjusted to absorb it.",
   H5: "Colposcopy available on site, 11-day mean turnaround.",
   H7: "Security posture meets institutional policy.",

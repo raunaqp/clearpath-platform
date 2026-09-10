@@ -7,7 +7,7 @@
  * Three gate sets live here:
  *   1. TOOL_GATES     — 17 gates (G1–G16) across 4 dimensions
  *   2. SITE_DOMAINS   — 6 domains (site readiness is domain-scored, not gated)
- *   3. HOSPITAL_GATES — 13 gates (H1–H13) across 3 intake groups
+ *   3. HOSPITAL_GATES — 14 gates (H1–H14) across 3 intake groups
  *
  * Fix text is written calibrated up-front (soft language), and still passes
  * through `softenCertainty()` when rendered — belt and braces.
@@ -337,12 +337,13 @@ export const SITE_DOMAIN_ORDER: SiteDomainId[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────
-// 3. Hospital intake gates — 13 gates, 3 groups (BUILD_SPEC §7)
+// 3. Hospital intake gates — 14 gates, 3 groups (BUILD_SPEC §7)
+//    H14 (consent) was added in Phase 6d; see the note on it below.
 // ─────────────────────────────────────────────────────────────────────────
 
 export type HospitalGateId =
   | "H1" | "H2" | "H3" | "H4"
-  | "H5" | "H6" | "H7" | "H8" | "H9"
+  | "H5" | "H6" | "H7" | "H8" | "H9" | "H14"
   | "H10" | "H11" | "H12" | "H13";
 
 export type HospitalGateDef = {
@@ -372,7 +373,7 @@ export const HOSPITAL_GROUPS: Record<
   can_run: {
     id: "can_run",
     title: "Can we run it?",
-    gates: ["H5", "H6", "H7", "H8", "H9"],
+    gates: ["H5", "H6", "H7", "H8", "H14", "H9"],
   },
   who_owns: {
     id: "who_owns",
@@ -448,6 +449,34 @@ export const HOSPITAL_GATES: Record<HospitalGateId, HospitalGateDef> = {
     fix: "Confirm in the pilot agreement that we retain data ownership.",
     vendorGate: "G12",
   },
+  /**
+   * THE FOURTEENTH GATE, added in Phase 6d.
+   *
+   * Vendor gate G14 is informed consent and NOTHING on the hospital side
+   * overlapped it. The consent finding was being carried on H8 — data ownership
+   * — which is a different question entirely: a hospital can own its data
+   * outright and still have no lawful basis for collecting it. The divergence
+   * screen was showing the right content on the wrong row.
+   *
+   * It is not a demo detail. Whether a vendor's consent flow can actually be
+   * executed here is the sharpest DPDP question a hospital asks, and an intake
+   * audit that cannot express it is missing something real. None of the
+   * existing thirteen covered it, and broadening one to cover both consent and
+   * ownership would have merged two questions that fail independently.
+   *
+   * It sits in "Can we run it?" because that is what it asks: not whether
+   * consent is lawful in principle, but whether THIS site can take it, in the
+   * language and on the medium its patients actually use.
+   */
+  H14: {
+    id: "H14",
+    group: "can_run",
+    title: "Consent workflow implementable here",
+    question:
+      "Can we actually take informed consent the way this tool requires — in our languages, on our medium, at our point of capture?",
+    fix: "Adapt the consent workflow to what this site can execute, or agree a local alternative before any patient is screened.",
+    vendorGate: "G14",
+  },
   H9: {
     id: "H9",
     group: "can_run",
@@ -493,6 +522,6 @@ export const HOSPITAL_GATES: Record<HospitalGateId, HospitalGateDef> = {
 
 export const HOSPITAL_GATE_ORDER: HospitalGateId[] = [
   "H1", "H2", "H3", "H4",
-  "H5", "H6", "H7", "H8", "H9",
+  "H5", "H6", "H7", "H8", "H14", "H9",
   "H10", "H11", "H12", "H13",
 ];

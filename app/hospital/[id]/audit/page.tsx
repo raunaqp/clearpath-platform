@@ -181,7 +181,7 @@ export default function AuditPage() {
         </div>
         <h1 className="font-serif text-3xl text-ink">{tool.name}</h1>
         <p className="text-sm text-muted">
-          The private-hospital intake checklist — 13 gates including the
+          The private-hospital intake checklist — 14 gates including the
           liability and billing gates the vendor card doesn't cover. Overlapping
           gates are pre-filled from the vendor card; change any of them.
         </p>
@@ -228,7 +228,7 @@ export default function AuditPage() {
         <AttachedEvidence docs={docs} />
       </section>
 
-      {/* The 13 gates, grouped */}
+      {/* The 14 gates, grouped */}
       <div className="space-y-6">
         {GROUP_ORDER.map((groupId) => {
           const group = HOSPITAL_GROUPS[groupId];

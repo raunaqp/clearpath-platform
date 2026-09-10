@@ -6,7 +6,7 @@ import { z } from "zod";
  * A "gate" is a single yes/partial/no question the engine evaluates. Three
  * engines share this shape (BUILD_SPEC §7):
  *   - tool readiness  → 17 gates (G1–G16) across 4 dimensions
- *   - hospital intake → 13 gates (H1–H13) across 3 groups
+ *   - hospital intake → 14 gates (H1–H14) across 3 groups
  * (site readiness scores whole domains rather than gates — see `site.ts`.)
  *
  * `status` drives everything downstream:

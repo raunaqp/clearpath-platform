@@ -17,7 +17,7 @@ import {
 } from "@/lib/mock/governance";
 import { deriveEndpoints, endpointsPredateTool } from "@/lib/engine/charter";
 import { DIVERGENCE_FRAMING } from "@/lib/engine/divergence";
-import { HOSPITAL_GATE_ORDER } from "@/lib/engine/gates";
+import { HOSPITAL_GATES, HOSPITAL_GATE_ORDER } from "@/lib/engine/gates";
 import { getProblemRegister } from "@/lib/mock/fixtures/site-profiles";
 import { AuditResultSchema } from "@/lib/schemas/audit";
 import { CommitteeVerdictSchema, PlacementRecordSchema, TrialCharterSchema } from "@/lib/schemas/governance";
@@ -60,8 +60,8 @@ section("1. The 88/100 composite is gone");
 const audit = buildNorthvaleAudit("cerviai");
 ok("AuditResult validates", AuditResultSchema.safeParse(audit).success);
 ok("there is no `score` field", !("score" in (audit as object)));
-eq("11 pass · 2 conditional", [audit.tally.pass, audit.tally.conditional], [11, 2]);
-eq("…of 13", audit.tally.total, 13);
+eq("12 pass · 2 conditional", [audit.tally.pass, audit.tally.conditional], [12, 2]);
+eq("…of 14", audit.tally.total, 14);
 eq("nothing not met, nothing unanswered", [audit.tally.notMet, audit.tally.unanswered], [0, 0]);
 const appSrc = [...walk("app"), ...walk("components")].map((f) => strip(readFileSync(f, "utf8"))).join("\n");
 ok("no /100 is rendered against an audit", !/\{live\.score\}|\{audit\.score\}|auditScore/.test(appSrc));
@@ -71,17 +71,20 @@ ok("VerdictComparison shows a tally", /pass · \$\{auditGates\.conditional\} con
 section("2. S17 — audit with named owners, and a DERIVED divergence");
 // ═════════════════════════════════════════════════════════════════════════
 
-eq("every one of the 13 gates has a named owner", NORTHVALE_ASSIGNMENTS.length, 13);
+eq("every one of the 14 gates has a named owner", NORTHVALE_ASSIGNMENTS.length, 14);
 ok("…covering exactly the gate set", HOSPITAL_GATE_ORDER.every((g) => NORTHVALE_ASSIGNMENTS.some((a) => a.gateId === g)));
 ok("every owner is a person with a role", NORTHVALE_ASSIGNMENTS.every((a) => a.ownerName.length > 0 && a.ownerRole.length > 0));
 ok("every gate cites evidence", NORTHVALE_ASSIGNMENTS.every((a) => (a.evidence ?? "").length > 0));
-ok("the DPO owns the consent finding", NORTHVALE_ASSIGNMENTS.find((a) => a.gateId === "H8")?.ownerRole === "Data Protection Officer");
+ok("the DPO owns the consent gate", NORTHVALE_ASSIGNMENTS.find((a) => a.gateId === "H14")?.ownerRole === "Data Protection Officer");
+ok("H14 exists and overlaps vendor gate G14 — the consent finding is on the consent row",
+  HOSPITAL_GATES.H14?.vendorGate === "G14");
 ok("the gynaecologist owns the confirmatory pathway", /Gynaecologist/.test(NORTHVALE_ASSIGNMENTS.find((a) => a.gateId === "H5")?.ownerRole ?? ""));
 ok("the superintendent owns operator release", /Superintendent/.test(NORTHVALE_ASSIGNMENTS.find((a) => a.gateId === "H6")?.ownerRole ?? ""));
 
 const divergences = buildDivergences("cerviai");
 ok("divergences are found by comparing the two records", divergences.length >= 1);
-ok("…including the consent/data gate the DPO flagged", divergences.some((d) => d.hospitalGateId === "H8"));
+ok("…including the CONSENT gate, not a gate about something else",
+  divergences.some((d) => d.hospitalGateId === "H14" && d.vendorGateId === "G14"));
 ok("each names both sides", divergences.every((d) => d.vendorReads.length > 0 && d.hospitalReads.length > 0));
 ok("each carries the vendor gate it overlaps", divergences.every((d) => d.vendorGateId.startsWith("G")));
 ok("only card-clear-vs-hospital-not counts", divergences.every((d) => d.vendorLevel === 2 && d.hospitalStatus !== "pass"));

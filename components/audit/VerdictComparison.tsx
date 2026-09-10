@@ -126,7 +126,7 @@ export function VerdictComparison({
         scoreLabel={
           auditGates
             ? `${auditGates.pass} pass · ${auditGates.conditional} conditional · ${auditGates.total} intake gates`
-            : "13 intake gates · incl. liability + billing"
+            : "14 intake gates · incl. consent, liability + billing"
         }
         ours
         pending={pending}

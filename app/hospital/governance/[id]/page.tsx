@@ -22,11 +22,11 @@ import { cn } from "@/lib/utils";
  * The two-sided design's central claim is that the hospital forms its own
  * verdict, and until this screen existed that claim was invisible — the card
  * was the only assessment on screen anywhere. Here the institution answers its
- * own thirteen questions, with a NAMED PERSON against each one and the evidence
+ * own fourteen questions, with a NAMED PERSON against each one and the evidence
  * they looked at.
  *
  * No composite. "11 pass · 2 conditional" is a count of discrete findings a
- * reader can check gate by gate; a mean of thirteen gates that are not on a
+ * reader can check gate by gate; a mean of fourteen gates that are not on a
  * common scale would invent a scale.
  */
 export default function GovernanceAuditPage() {
@@ -68,7 +68,7 @@ export default function GovernanceAuditPage() {
         </p>
         <h1 className="font-serif text-3xl leading-tight text-ink">{audit.auditor}</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Thirteen questions this institution answers for itself. The vendor&apos;s Readiness Card is
+          Fourteen questions this institution answers for itself. The vendor&apos;s Readiness Card is
           an input to this, not a conclusion.
         </p>
         <p className="pt-1 font-serif text-2xl text-ink">
@@ -76,7 +76,7 @@ export default function GovernanceAuditPage() {
           {audit.tally.notMet > 0 && ` · ${audit.tally.notMet} not met`}
         </p>
         <p className="text-xs leading-relaxed text-muted">
-          A tally, not a score. Averaging thirteen gates that are not on a common scale would invent
+          A tally, not a score. Averaging fourteen gates that are not on a common scale would invent
           one.
         </p>
       </header>
@@ -106,7 +106,7 @@ export default function GovernanceAuditPage() {
         </section>
       )}
 
-      {/* The 13 gates, grouped, each with an owner */}
+      {/* The 14 gates, grouped, each with an owner */}
       {(["should_pilot", "can_run", "who_owns"] as const).map((groupId) => {
         const group = HOSPITAL_GROUPS[groupId];
         return (

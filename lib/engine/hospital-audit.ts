@@ -3,7 +3,7 @@
  *
  *   runHospitalAudit(input) → AuditResult
  *
- * The private-hospital intake checklist — 13 gates across "Should we pilot? /
+ * The private-hospital intake checklist — 14 gates across "Should we pilot? /
  * Can we run? / Who owns it?", including the liability + billing gates a vendor
  * card doesn't cover. Same verdict rule as the tool engine:
  *   any fail → NOTYET · else any partial → CONDITIONS · else DEPLOY
@@ -81,7 +81,7 @@ export function runHospitalAudit(input: HospitalAuditInput): AuditResult {
 
   /**
    * A tally, not a mean. See the note on `tally` in the schema: averaging
-   * thirteen gates that are not on a common scale invents a scale.
+   * fourteen gates that are not on a common scale invents a scale.
    */
   const tally = {
     pass: gateResults.filter((r) => r.status === "pass" && r.answered !== false).length,

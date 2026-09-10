@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 /**
  * S18 — the committee verdict.
  *
- * SEPARATE STATE FROM THE AUDIT. The audit is thirteen findings; the verdict is
+ * SEPARATE STATE FROM THE AUDIT. The audit is fourteen findings; the verdict is
  * what the institution decided to do about them, and the two can legitimately
  * differ — a committee may accept a conditional gate or refuse on a clear one.
  *
