@@ -56,6 +56,7 @@ const SUITES = [
   { key: "phase4", label: "Phase 4 · migration, listing, matching", kind: "engine", cmd: ["tsx", "scripts/phase4-acceptance.ts"] },
   { key: "phase5", label: "Phase 5 · ClearPath handoff", kind: "engine", cmd: ["tsx", "scripts/phase5-acceptance.ts"] },
   { key: "phase6a", label: "Phase 6a · hospital front half", kind: "engine", cmd: ["tsx", "scripts/phase6a-acceptance.ts"] },
+  { key: "phase6b", label: "Phase 6b · hospital governance", kind: "engine", cmd: ["tsx", "scripts/phase6b-acceptance.ts"] },
   { key: "browser", label: "Site-wide browser suite", kind: "browser", cmd: ["node", "scripts/browser-verify.mjs"] },
   { key: "phase3-browser", label: "Phase 3 · fresh submission journey", kind: "browser", cmd: ["node", "scripts/phase3-browser.mjs"] },
   { key: "phase5-browser", label: "Phase 5 · handoff journey", kind: "browser", cmd: ["node", "scripts/phase5-browser.mjs"] },
