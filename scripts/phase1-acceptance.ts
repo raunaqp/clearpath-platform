@@ -344,7 +344,11 @@ ok("conditions map back to legacy gate ids", legacy.conditions.some((c) => c.gat
 
 // THE `d1 - 4` TRAP.
 const fakeDeployment = { alerts: [] } as unknown as Deployment;
-const { scorecard } = buildScorecard(fakeDeployment, legacy);
+const { scorecard } = buildScorecard(fakeDeployment, legacy)!;
+// A deployment whose tool has no card gets NO scorecard, rather than a
+// clinical score of 71 invented from a null and averaged into a
+// SCALE / EXTEND / STOP recommendation.
+ok("buildScorecard returns null without a card", buildScorecard(fakeDeployment, null) === null);
 const clinical = scorecard.find((l) => l.key === "clinical")!.score;
 eq("buildScorecard's `d1 - 4` gets a 0-100 number (100 - 4 = 96)", clinical, 96);
 ok(

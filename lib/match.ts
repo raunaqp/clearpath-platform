@@ -225,16 +225,27 @@ export function matchToolToSite(args: {
     ok: levelOk && cadreOk && modesOk,
     blocking: true,
     detail: softenCertainty(
-      levelOk && cadreOk && modesOk
-        ? `Card context is ${CARE_LEVEL_SHORT[ctx.careLevel]} / ${OPERATOR_CADRE_LABEL[ctx.operatorCadre]} / ${ctx.deploymentModes.map((m) => DEPLOYMENT_MODE_LABEL[m]).join(" and ")}; ${hospital.name} runs that — contained.`
-        : [
-            !levelOk ? `the site does not operate at ${CARE_LEVEL_SHORT[ctx.careLevel]} level` : null,
-            !cadreOk ? `it does not staff a ${OPERATOR_CADRE_LABEL[ctx.operatorCadre]} for this` : null,
-            !modesOk ? `it does not run ${ctx.deploymentModes.map((m) => DEPLOYMENT_MODE_LABEL[m]).join(" or ")}` : null,
-          ]
-            .filter(Boolean)
-            .join("; ")
-            .replace(/^./, (c) => c.toUpperCase()) + ". The card is not valid here."
+      /*
+        A SITE WITH NO PROFILE IS NOT A SITE THAT FAILS.
+        Without this branch the three checks below all read false and the row
+        said "the site does not operate at CHC level; it does not staff a staff
+        nurse" — three specific factual claims about a hospital, derived
+        entirely from having no record of it. The outcome is the same (the card
+        is not valid here) but the REASON has to be the true one, or the screen
+        is telling a vendor something about a hospital nobody has assessed.
+      */
+      !profile
+        ? `${hospital.name} has not baselined an operating profile, so there is nothing to check the card's context against.`
+        : levelOk && cadreOk && modesOk
+          ? `Card context is ${CARE_LEVEL_SHORT[ctx.careLevel]} / ${OPERATOR_CADRE_LABEL[ctx.operatorCadre]} / ${ctx.deploymentModes.map((m) => DEPLOYMENT_MODE_LABEL[m]).join(" and ")}; ${hospital.name} runs that — contained.`
+          : [
+              !levelOk ? `the site does not operate at ${CARE_LEVEL_SHORT[ctx.careLevel]} level` : null,
+              !cadreOk ? `it does not staff a ${OPERATOR_CADRE_LABEL[ctx.operatorCadre]} for this` : null,
+              !modesOk ? `it does not run ${ctx.deploymentModes.map((m) => DEPLOYMENT_MODE_LABEL[m]).join(" or ")}` : null,
+            ]
+              .filter(Boolean)
+              .join("; ")
+              .replace(/^./, (c) => c.toUpperCase()) + ". The card is not valid here."
     ),
   };
 

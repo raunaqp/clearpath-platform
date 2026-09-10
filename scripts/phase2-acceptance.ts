@@ -296,7 +296,7 @@ ok("dimension scores are 0-100, not 0-2 means", Object.values(legacy.dimensionSc
 ok("conditions map back to legacy gate ids", legacy.conditions.some((c) => c.gateId === "G15"));
 ok("blocking scope does not leak into the v1 shape", !("blocks" in legacy.conditions[0]));
 
-const { scorecard } = buildScorecard({ alerts: [] } as unknown as Deployment, legacy);
+const { scorecard } = buildScorecard({ alerts: [] } as unknown as Deployment, legacy)!;
 const clinical = scorecard.find((l) => l.key === "clinical")!.score;
 eq("buildScorecard's `d1 - 4` gets 90 - 4 = 86", clinical, 86);
 ok("…not the 0 a raw 0-2 mean would silently produce", clinical !== 0);

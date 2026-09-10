@@ -5,6 +5,13 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { buildNorthvaleAudit, buildDivergences } from "@/lib/mock/api-governance";
+import { buildTrialView } from "@/lib/mock/api-trial";
+import { buildClarifyState } from "@/lib/mock/api-clarify";
+import { buildListingFor } from "@/lib/mock/api-registry";
+import { buildScorecard } from "@/lib/engine/deployment-report";
+import { matchToolToSite } from "@/lib/match";
+import { HOSPITALS } from "@/lib/mock/fixtures/hospitals";
+import type { Deployment } from "@/lib/schemas/deployment";
 import {
   NORTHVALE_ASSIGNMENTS,
   NORTHVALE_PLACEMENT,
@@ -249,6 +256,56 @@ for (const file of [...walk("app"), ...walk("components")]) {
 }
 ok("every writing control carries aria-busy alongside its disabled state",
   missingBusy.length === 0, missingBusy.slice(0, 4).join(" | "));
+
+// ═════════════════════════════════════════════════════════════════════════
+section("Builders — nothing complete-looking from a missing input");
+// ═════════════════════════════════════════════════════════════════════════
+
+/**
+ * THE FABRICATED-AUDIT CLASS.
+ *
+ * buildNorthvaleAudit returned a complete fourteen-gate audit for a slug with
+ * no submission — a screen telling a reader a hospital had assessed something
+ * it never saw. That is worse than a spinner: a spinner says wait, a fabricated
+ * record says a thing happened.
+ *
+ * Every builder that takes an identifier or a nullable record is checked here
+ * against a missing input. The rule is the same for all of them: return
+ * nothing, so the caller has to say so, rather than filling a shape with
+ * defaults.
+ */
+for (const [name, run] of [
+  ["buildNorthvaleAudit", () => buildNorthvaleAudit("does-not-exist")],
+  ["buildDivergences", () => { const d = buildDivergences("does-not-exist"); return d.length === 0 ? null : d; }],
+  ["buildCharter", () => buildCharter("does-not-exist")],
+  ["buildTrialView", () => buildTrialView("does-not-exist")],
+  ["buildClarifyState", () => buildClarifyState("does-not-exist")],
+  ["buildListingFor", () => buildListingFor("does-not-exist")],
+  ["currentVerdict", () => currentVerdict("does-not-exist")],
+  ["buildScorecard(no card)", () => buildScorecard({ alerts: [] } as unknown as Deployment, null)],
+] as const) {
+  const got = run();
+  ok(`${name} returns nothing for a missing input`, got === null || got === undefined,
+    got === null || got === undefined ? "" : `got ${JSON.stringify(got).slice(0, 90)}`);
+}
+
+/**
+ * PARTIAL input, not missing: a hospital that exists but has never baselined
+ * an operating profile. The match must say THAT, not report specific negative
+ * facts about a site nobody has assessed.
+ */
+const unprofiled = matchToolToSite({
+  card: getCardV2("cerviai")!.card,
+  toolName: "CerviAI",
+  hospital: HOSPITALS[0],
+  profile: undefined,
+  register: undefined,
+});
+ok("matching names the missing profile rather than asserting the site fails",
+  /has not baselined an operating profile/.test(unprofiled.breakdown.contextValidity.detail)
+    && !/does not operate at/.test(unprofiled.breakdown.contextValidity.detail),
+  unprofiled.breakdown.contextValidity.detail.slice(0, 80));
+ok("…and still reaches the right outcome", unprofiled.band === "NOT_ELIGIBLE");
 
 console.log(`\nPHASE 6b ACCEPTANCE ${fail === 0 ? "PASSED" : "FAILED"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

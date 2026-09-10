@@ -18,13 +18,28 @@ function clamp(n: number): number {
  * clinical/workflow track the tool's own dimension scores; referral reflects
  * whether a referral-gap alert is open; cost/equity are calibrated pilot
  * defaults. Recommendation: ≥85 SCALE · ≥65 EXTEND · else STOP.
+ *
+ * NULL WITHOUT A CARD, and this is not a nicety.
+ *
+ * It used to read `card?.dimensionScores.D1 ?? 75`, so a deployment whose tool
+ * had no readiness card still produced a complete five-line scorecard — a
+ * clinical score of 71 and a workflow score of 69, invented from a null,
+ * averaged with three constants into a SCALE / EXTEND / STOP recommendation
+ * about a real deployment. Same failure as an audit fabricated for a
+ * submission nobody made, and worse for being numeric: a reader cannot see
+ * that 71 came from nowhere.
+ *
+ * Two of the five lines are properties of the card. Without one there is no
+ * scorecard, and the caller has to say so rather than print a number.
  */
 export function buildScorecard(
   dep: Deployment,
   card: ToolReadinessCard | null
-): { scorecard: ScorecardLine[]; recommendation: Recommendation } {
-  const d1 = card?.dimensionScores.D1 ?? 75;
-  const d3 = card?.dimensionScores.D3 ?? 75;
+): { scorecard: ScorecardLine[]; recommendation: Recommendation } | null {
+  if (!card) return null;
+
+  const d1 = card.dimensionScores.D1;
+  const d3 = card.dimensionScores.D3;
   const hasReferralGap = dep.alerts.some((a) => /referral/i.test(a.title));
 
   const clinical = clamp(d1 - 4);

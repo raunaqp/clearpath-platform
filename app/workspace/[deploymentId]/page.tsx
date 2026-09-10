@@ -77,6 +77,8 @@ function HospitalWorkspace() {
   const [view, setView] = useState<Phase>("setup");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  /** Surfaced when an action cannot proceed, rather than failing silently. */
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -116,8 +118,15 @@ function HospitalWorkspace() {
   }
   async function generateReview() {
     if (!dep) return;
-    const { scorecard, recommendation } = buildScorecard(dep, card);
-    await advance("review", { scorecard, recommendation });
+    // No readiness card, no scorecard. Two of its five lines ARE the card;
+    // inventing them would put a number a reader cannot check behind a
+    // SCALE / EXTEND / STOP recommendation.
+    const built = buildScorecard(dep, card);
+    if (!built) {
+      setError("This deployment has no readiness card, so a scorecard cannot be produced.");
+      return;
+    }
+    await advance("review", { scorecard: built.scorecard, recommendation: built.recommendation });
   }
   async function prepareFinal() {
     if (!dep) return;
@@ -170,6 +179,12 @@ function HospitalWorkspace() {
       </div>
 
       {/* ── PRE: setup / ethics_setup ─────────────────────────────────────── */}
+      {error && (
+        <p className="rounded-card border border-[#993C1D]/30 bg-[#FAECE7] px-4 py-3 text-sm text-[#993C1D]">
+          {error}
+        </p>
+      )}
+
       {(view === "setup" || view === "ethics_setup") && (
         <Panel title={isTrial ? "Ethics & CTRI setup" : "Setup · readiness confirmed"}>
           <div className="grid gap-3 sm:grid-cols-3">
