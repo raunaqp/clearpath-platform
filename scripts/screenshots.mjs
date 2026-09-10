@@ -7,7 +7,7 @@ mkdirSync(OUT, { recursive: true });
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox"] });
 const page = await browser.newPage();
 await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 2 });
-for (const [path, name] of [["/", "home"], ["/hospitals", "hospitals"], ["/vendors", "vendors"]]) {
+for (const [path, name] of [["/", "home"], ["/for-hospitals", "for-hospitals"], ["/for-innovators", "for-innovators"]]) {
   await page.goto(BASE + path, { waitUntil: "networkidle2" });
   await new Promise((r) => setTimeout(r, 800));
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });

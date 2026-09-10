@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Scale, MapPin, ShieldCheck } from "lucide-react";
+import { useRole } from "@/lib/role/RoleContext";
 import { ProductPreview } from "@/components/home/ProductPreview";
 import { SiteReadinessDemo } from "@/components/home/SiteReadinessDemo";
 import { MonitoringDemo } from "@/components/home/MonitoringDemo";
@@ -21,7 +23,20 @@ import { AssessDemo } from "@/components/home/AssessDemo";
  * product does. That also rules out the two things the preview build shows
  * here: a 94/100 composite disc and a /3 maturity scale, neither of which
  * exists in our product any more.
+ *
+ * This page ABSORBED /hospitals, which carried the same headline. The value
+ * props and both entry actions came across; what did not is the silent
+ * `setRole("hospital")` that page ran on mount. Reading about hospitals is not
+ * the same as being one, so the role is set by clicking an entry action —
+ * which is also the only moment it means anything.
  */
+
+/** From /hospitals. */
+const VALUES = [
+  { icon: Scale, lead: "Your own verdict, not the vendor's", rest: "an independent 14-gate intake audit." },
+  { icon: MapPin, lead: "Placement & readiness", rest: "know if this tool fits your site before you commit." },
+  { icon: ShieldCheck, lead: "Run it properly", rest: "trial or deployment, monitored, documented, owned." },
+];
 
 type Step = {
   n: string;
@@ -137,6 +152,15 @@ const STEPS: Step[] = [
 ];
 
 export default function ForHospitalsPage() {
+  const { setRole } = useRole();
+  const router = useRouter();
+
+  /** Enter the product AS a hospital. The role is set by the click, not by the view. */
+  function enter(href: string) {
+    setRole("hospital");
+    router.push(href);
+  }
+
   return (
     <div className="space-y-14 pb-8">
       <section className="max-w-3xl space-y-4 pt-8">
@@ -150,9 +174,38 @@ export default function ForHospitalsPage() {
           Stop running pilots that go nowhere.
         </h1>
         <p className="max-w-2xl text-lg leading-relaxed text-ink-2">
-          Discover, evaluate and deploy tools safely — with the evidence to show why, at every
-          step.
+          Review the AI tools vendors send you, run your own independent audit, check whether
+          you&apos;re ready to host, and run the trial or deployment end-to-end — with a named
+          owner at the end.
         </p>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => enter("/hospital")}
+            className="inline-flex items-center gap-2 rounded-md bg-teal-deep px-5 py-2.5 text-sm text-white transition-opacity hover:opacity-90"
+          >
+            Open your inbox <ArrowRight className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => enter("/site-readiness")}
+            className="inline-flex items-center gap-2 rounded-md border border-line px-5 py-2.5 text-sm text-ink-2 transition-colors hover:bg-bg-sink"
+          >
+            Check our site readiness
+          </button>
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-3">
+        {VALUES.map((v) => (
+          <div key={v.lead} className="rounded-card border border-line bg-bg-card px-5 py-4">
+            <v.icon className="h-6 w-6 text-teal-deep" />
+            <p className="mt-3 text-sm leading-relaxed text-ink">
+              <span className="font-medium">{v.lead}</span>
+              <span className="text-ink-2"> — {v.rest}</span>
+            </p>
+          </div>
+        ))}
       </section>
 
       {STEPS.map((s) => (

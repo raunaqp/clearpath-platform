@@ -207,19 +207,37 @@ try {
   const innoResearch = await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /how we built the regulatory tool/i.test(a.textContent))?.getAttribute("href") ?? null);
   ok("'How we built the regulatory tool' → /research", innoResearch === "/research", innoResearch ?? "MISSING");
 
-  console.log("\n── /hospitals landing (reachable by URL; no longer linked from home) ──");
-  await goto(page, "/hospitals");
-  t = await body(page);
-  ok("hospitals headline", t.includes("stop running pilots that go nowhere"));
-  ok("hospitals 3 value props", t.includes("your own verdict") && t.includes("placement & readiness") && t.includes("run it properly"));
-  ok("primary CTA inbox + secondary site readiness", t.includes("open your inbox") && t.includes("check our site readiness"));
+  console.log("\n── ORPHAN DOORS: /hospitals and /vendors redirect to the sub-pages ──");
+  /**
+   * Both doors carried the same headline as the sub-page that replaced them —
+   * /vendors the same sub-line too. One audience, one page. The sub-pages win
+   * because home links to them and they carry the four steps; they absorbed
+   * the doors' value props and entry actions on the way.
+   */
+  for (const [from, to] of [["/hospitals", "/for-hospitals"], ["/vendors", "/for-innovators"]]) {
+    const landed = await page.evaluate(async (from) => {
+      const r = await fetch(from, { redirect: "follow" });
+      return new URL(r.url).pathname;
+    }, from);
+    ok(`${from} redirects to ${to}`, landed === to, landed);
+  }
 
-  console.log("\n── /vendors landing + regulatory on-ramp value prop ──");
-  await goto(page, "/vendors");
+  await goto(page, "/for-hospitals");
   t = await body(page);
-  ok("vendors headline", t.includes("from readiness card to a hospital"));
-  ok("vendors 3 value props", t.includes("calibrated readiness card") && t.includes("best-fit hospital") && t.includes("regulatory on-ramp"));
+  ok("the hospital value props survived the merge", t.includes("your own verdict") && t.includes("placement & readiness") && t.includes("run it properly"));
+  ok("…and both entry actions", t.includes("open your inbox") && t.includes("check our site readiness"));
+  // The doors called setRole() on mount. A marketing page must not: reading
+  // about hospitals is not the same as being one.
+  const roleOnView = await page.evaluate(() => localStorage.getItem("clearpath-role"));
+  ok("viewing the page does not set a role", roleOnView !== "hospital", String(roleOnView));
+
+  console.log("\n── /for-innovators value props + regulatory on-ramp ──");
+  await goto(page, "/for-innovators");
+  t = await body(page);
+  ok("innovators headline", t.includes("from readiness card to a hospital"));
+  ok("the innovator value props survived the merge", t.includes("calibrated readiness card") && t.includes("best-fit hospital") && t.includes("regulatory on-ramp"));
   ok("submit CTA", t.includes("submit a tool"));
+  ok("no page still says 'for vendors'", !t.includes("for vendors"));
   const reg = await page.evaluate(() => {
     const a = [...document.querySelectorAll("a")].find((e) => /regulatory on-ramp/i.test(e.textContent) && e.target === "_blank");
     return a ? { href: a.href, target: a.target, rel: a.rel } : null;
@@ -396,9 +414,9 @@ try {
   await goto(page, "/");
   t = await body(page);
   ok("home: 17 gates, no 16 gates", t.includes("17 gates") && !t.includes("16 gate"));
-  await goto(page, "/vendors");
+  await goto(page, "/for-innovators");
   t = await body(page);
-  ok("vendors: 17 gates", t.includes("17 gates") && !t.includes("16 gate"));
+  ok("/for-innovators: 17 gates", t.includes("17 gates") && !t.includes("16 gate"));
   await goto(page, "/registry/cerviai");
   await waitText(page, "gates clear");
   t = await body(page);
@@ -514,7 +532,7 @@ try {
   const rMenu = await regLink(page, "regulatory filing");
   ok("Login-as dropdown 'Regulatory filing' link", regOk(rMenu), rMenu ? rMenu.href : "MISSING");
   await clickText(page, "Login as"); // close menu
-  await goto(page, "/vendors");
+  await goto(page, "/for-innovators");
   await waitText(page, "regulatory on-ramp");
   const rCard = await regLink(page, "regulatory on-ramp");
   ok("vendor on-ramp card link", regOk(rCard), rCard ? rCard.href : "MISSING");
@@ -701,7 +719,7 @@ try {
    */
   const LAYOUT_ROUTES = [
     ["/", "hospital"], ["/about", "hospital"], ["/framework", "hospital"], ["/research", "hospital"],
-    ["/for-hospitals", "hospital"], ["/for-innovators", "hospital"], ["/vendors", "vendor"],
+    ["/for-hospitals", "hospital"], ["/for-innovators", "hospital"],
     ["/registry", "vendor"], ["/registry/cerviai", "vendor"], ["/applications", "vendor"],
     ["/submit/cerviai/card", "vendor"], ["/submit/cerviai/assess", "vendor"],
     ["/submit/retinascan/clarify", "vendor"], ["/submit/cerviai/checklist", "vendor"],

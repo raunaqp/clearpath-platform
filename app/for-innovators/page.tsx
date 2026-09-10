@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, ArrowUpRight, FileCheck2, Target, ShieldCheck } from "lucide-react";
 import { REGULATORY_URL } from "@/lib/links";
+import { useRole } from "@/lib/role/RoleContext";
 import { ProductPreview } from "@/components/home/ProductPreview";
 import { AssessDemo } from "@/components/home/AssessDemo";
 import { DirectoryDemo } from "@/components/home/DirectoryDemo";
@@ -13,6 +15,12 @@ import { DirectoryDemo } from "@/components/home/DirectoryDemo";
  *
  * Every preview is the REAL component on the real fixtures. Nothing here shows
  * a composite score or a /3 maturity scale — the product has neither.
+ *
+ * This page ABSORBED /vendors, which carried the same headline and the same
+ * sub-line. Its three value props and its Submit CTA came across; the silent
+ * `setRole("vendor")` on mount did not — the role is set by clicking an entry
+ * action, not by reading the page. The eyebrow also stops saying "vendors":
+ * the rest of the site says innovators, and that page was the last holdout.
  */
 
 function Bullets({ items }: { items: string[] }) {
@@ -29,6 +37,15 @@ function Bullets({ items }: { items: string[] }) {
 }
 
 export default function ForInnovatorsPage() {
+  const { setRole } = useRole();
+  const router = useRouter();
+
+  /** Enter the product AS an innovator. Set by the click, not by the view. */
+  function enter(href: string) {
+    setRole("vendor");
+    router.push(href);
+  }
+
   return (
     <div className="space-y-14 pb-8">
       <section className="max-w-3xl space-y-4 pt-8">
@@ -53,6 +70,50 @@ export default function ForInnovatorsPage() {
             Start there <ArrowUpRight className="h-3.5 w-3.5 text-[#BA7517]" />
           </a>
         </p>
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => enter("/submit")}
+            className="inline-flex items-center gap-2 rounded-md bg-teal-deep px-5 py-2.5 text-sm text-white transition-opacity hover:opacity-90"
+          >
+            Submit a tool <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+
+      {/* Value props, from /vendors. The third links out to the upstream
+          regulatory product in a new tab. */}
+      <section className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-card border border-line bg-bg-card px-5 py-4">
+          <FileCheck2 className="h-6 w-6 text-teal-deep" />
+          <p className="mt-3 text-sm leading-relaxed text-ink">
+            <span className="font-medium">A calibrated readiness card</span>
+            <span className="text-ink-2"> — 17 gates, 4 dimensions, honest conditions.</span>
+          </p>
+        </div>
+        <div className="rounded-card border border-line bg-bg-card px-5 py-4">
+          <Target className="h-6 w-6 text-teal-deep" />
+          <p className="mt-3 text-sm leading-relaxed text-ink">
+            <span className="font-medium">Matched to a best-fit hospital</span>
+            <span className="text-ink-2"> — by level of care and what they&apos;re seeking.</span>
+          </p>
+        </div>
+        <a
+          href={REGULATORY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex flex-col rounded-card border border-teal-deep/30 bg-teal-light/40 px-5 py-4 transition-colors hover:bg-teal-light"
+        >
+          <div className="flex items-center justify-between">
+            <ShieldCheck className="h-6 w-6 text-teal-deep" />
+            <ArrowUpRight className="h-4 w-4 text-teal-deep transition-transform group-hover:translate-x-0.5" />
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-ink">
+            <span className="font-medium">Regulatory on-ramp</span>
+            <span className="text-ink-2"> — sort CDSCO/DPDP readiness first if you need to.</span>
+          </p>
+          <span className="mt-2 text-xs text-muted">Opens ClearPath Regulatory in a new tab.</span>
+        </a>
       </section>
 
       <section className="scroll-mt-20 space-y-5" id="step-01">
@@ -123,9 +184,6 @@ export default function ForInnovatorsPage() {
             ]}
           />
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <Link href="/vendors" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
-              For innovators <ArrowRight className="h-4 w-4" />
-            </Link>
             <Link href="/research" className="inline-flex items-center gap-1 text-sm text-teal-deep hover:underline">
               How we built the regulatory tool <ArrowRight className="h-4 w-4" />
             </Link>
