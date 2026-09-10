@@ -21,7 +21,8 @@
     "verify:phase6a": "tsx scripts/phase6a-acceptance.ts",
     "verify:phase6b": "tsx scripts/phase6b-acceptance.ts",
     "verify:phase6c": "tsx scripts/phase6c-acceptance.ts",
-    "verify:phase6d": "tsx scripts/phase6d-acceptance.ts"
+    "verify:phase6d": "tsx scripts/phase6d-acceptance.ts",
+    "verify:phase7a": "tsx scripts/phase7a-acceptance.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
