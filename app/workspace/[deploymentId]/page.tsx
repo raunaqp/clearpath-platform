@@ -38,6 +38,9 @@ import { useRole } from "@/lib/role/RoleContext";
 import { downloadReportPdf } from "@/lib/pdf/report";
 import { FileDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getTrialView } from "@/lib/mock/api-trial";
+import type { TrialView } from "@/lib/mock/api-trial";
+import { DemoDataLabel, MonitoringContext, ProvePanel, TelemetryPanel } from "@/components/workspace/TrialPanels";
 
 /**
  * The full workspace (stepper + monitoring + docs + report + handover) is a
@@ -65,6 +68,7 @@ function HospitalWorkspace() {
   const router = useRouter();
 
   const [dep, setDep] = useState<Deployment | null>(null);
+  const [trial, setTrial] = useState<TrialView | null>(null);
   const [tool, setTool] = useState<Tool | null>(null);
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [vendor, setVendor] = useState<Vendor | null>(null);
@@ -83,6 +87,8 @@ function HospitalWorkspace() {
       const [v, ds] = await Promise.all([t ? getVendor(t.vendorId) : Promise.resolve(undefined), getDocumentsByIds(d.docIds)]);
       if (!live) return;
       if (t && deploymentId !== t.slug) router.replace(`/workspace/${t.slug}`);
+      // Full trial telemetry exists only where a trial is actually running.
+      void getTrialView(t?.slug ?? deploymentId).then((v) => setTrial(v ?? null));
       setDep(d); setTool(t ?? null); setHospital(h ?? null); setVendor(v ?? null); setCard(c ?? null); setDocs(ds); setView(d.phase); setLoading(false);
     })();
     return () => { live = false; };
@@ -205,10 +211,11 @@ function HospitalWorkspace() {
       {/* ── DURING: enrolment / go_live ───────────────────────────────────── */}
       {(view === "enrolment" || view === "go_live") && (
         <Panel title={isTrial ? "Enrolment" : "Go-live"}>
+          {trial && <div className="mb-4"><TelemetryPanel trial={trial} /></div>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {dep.metrics.length ? dep.metrics.map((m) => <MetricCard key={m.key} metric={m} />) : <p className="text-sm text-muted">Metrics accrue once {isTrial ? "enrolment" : "go-live"} starts.</p>}
           </div>
-          <h3 className="mt-5 mb-2 text-sm text-muted">Committee</h3>
+          <h3 className="mt-5 mb-2 flex flex-wrap items-center gap-2 text-sm text-muted">Committee <DemoDataLabel /></h3>
           <CommitteeSection deploymentId={dep.id} onAdded={setDep} />
           <h3 className="mt-5 mb-2 text-sm text-muted">Workflow &amp; roles</h3>
           <RolesList dep={dep} />
@@ -218,6 +225,7 @@ function HospitalWorkspace() {
       {/* ── DURING: monitoring — interactive governance dashboard ─────────── */}
       {view === "monitoring" && (
         <Panel title="Monitoring · governance dashboard">
+          {trial && <div className="mb-4"><MonitoringContext trial={trial} /></div>}
           <MonitoringDashboard deploymentId={dep.id} alerts={dep.alerts} />
         </Panel>
       )}
@@ -225,7 +233,9 @@ function HospitalWorkspace() {
       {/* ── POST (trial): analysis · study endpoints ──────────────────────── */}
       {view === "analysis" && (
         <Panel title="Analysis · study endpoints">
-          {dep.endpoints.length === 0 ? (
+          {trial ? (
+            <ProvePanel trial={trial} />
+          ) : dep.endpoints.length === 0 ? (
             <div className="text-sm text-muted">
               <p>Study endpoints are computed against the trial's targets.</p>
               <button onClick={generateAnalysis} disabled={busy} className="mt-3 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Generate analysis</button>

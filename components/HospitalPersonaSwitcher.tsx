@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Building2, Check, ChevronDown } from "lucide-react";
 import { useHospital } from "@/lib/hospital/HospitalContext";
-import { HOSPITAL_PERSONAS, personaById } from "@/lib/hospital/personas";
+import { PERSONA_GROUPS, personaById } from "@/lib/hospital/personas";
 import { cn } from "@/lib/utils";
 
 /**
@@ -45,27 +45,39 @@ export function HospitalPersonaSwitcher() {
           role="listbox"
           className="absolute right-0 z-30 mt-1.5 w-72 overflow-hidden rounded-card border border-line bg-bg-card shadow-lg"
         >
-          {HOSPITAL_PERSONAS.map((p) => {
-            const active = p.id === hospitalId;
-            return (
-              <button
-                key={p.id}
-                role="option"
-                aria-selected={active}
-                onClick={() => { setHospitalId(p.id); setOpen(false); }}
-                className={cn(
-                  "flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-bg-sink",
-                  active && "bg-teal-light/60"
-                )}
-              >
-                <Check className={cn("mt-0.5 h-4 w-4 shrink-0", active ? "text-teal-deep" : "text-transparent")} />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-ink">{p.name}</span>
-                  <span className="block text-xs text-muted">{p.role}</span>
-                </span>
-              </button>
-            );
-          })}
+          {/*
+            Grouped, so switching scenario is a deliberate act. Wandering from
+            the main demonstration into a different tool at a different site is
+            what made the reviewed journey look stitched together.
+          */}
+          {PERSONA_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="border-b border-line-soft bg-bg-sink/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted">
+                {group.label}
+              </p>
+              {group.personas.map((p) => {
+                const active = p.id === hospitalId;
+                return (
+                  <button
+                    key={p.id}
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => { setHospitalId(p.id); setOpen(false); }}
+                    className={cn(
+                      "flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-bg-sink",
+                      active && "bg-teal-light/60"
+                    )}
+                  >
+                    <Check className={cn("mt-0.5 h-4 w-4 shrink-0", active ? "text-teal-deep" : "text-transparent")} />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-ink">{p.name}</span>
+                      <span className="block text-xs text-muted">{p.role}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
           <p className="border-t border-line bg-bg-sink px-3 py-2 text-xs text-muted">
             Fictional demo data — these are not real institutions.
           </p>
