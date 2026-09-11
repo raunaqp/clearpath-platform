@@ -60,6 +60,7 @@ const SUITES = [
   { key: "phase6c", label: "Phase 6c · human-in-the-loop return", kind: "engine", cmd: ["tsx", "scripts/phase6c-acceptance.ts"] },
   { key: "phase6d", label: "Phase 6d · coverage and the consent gate", kind: "engine", cmd: ["tsx", "scripts/phase6d-acceptance.ts"] },
   { key: "phase7a", label: "Phase 7a · the trial", kind: "engine", cmd: ["tsx", "scripts/phase7a-acceptance.ts"] },
+  { key: "phase7b", label: "Phase 7b · the outcome", kind: "engine", cmd: ["tsx", "scripts/phase7b-acceptance.ts"] },
   { key: "browser", label: "Site-wide browser suite", kind: "browser", cmd: ["node", "scripts/browser-verify.mjs"] },
   { key: "phase3-browser", label: "Phase 3 · fresh submission journey", kind: "browser", cmd: ["node", "scripts/phase3-browser.mjs"] },
   { key: "phase5-browser", label: "Phase 5 · handoff journey", kind: "browser", cmd: ["node", "scripts/phase5-browser.mjs"] },

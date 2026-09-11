@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Check, Store } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Store } from "lucide-react";
 import type { Deployment, Phase } from "@/lib/schemas/deployment";
 import type { Tool } from "@/lib/schemas/tool";
 import type { Hospital } from "@/lib/schemas/hospital";
@@ -293,6 +293,10 @@ function HospitalWorkspace() {
               {dep.recommendation && <RecommendationBand rec={dep.recommendation} />}
               <div className="flex flex-wrap items-center gap-3">
                 {dep.phase !== "closeout" && <button onClick={prepareFinal} disabled={busy} aria-busy={busy} className="mt-4 inline-flex items-center gap-2 rounded-md bg-teal-deep px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60">Prepare closeout</button>}
+                {/* S24. The rule was fixed at the charter; this is where it is run. */}
+                <Link href={`/hospital/outcome/${tool?.slug ?? deploymentId}`} className="mt-4 inline-flex items-center gap-2 rounded-md border border-line px-4 py-2 text-sm text-ink-2 transition-colors hover:bg-bg-sink">
+                  Outcome decision <ArrowRight className="h-4 w-4" />
+                </Link>
                 <ReportPdfButton />
               </div>
             </>

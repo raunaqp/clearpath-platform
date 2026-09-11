@@ -795,6 +795,78 @@ try {
   ok("nothing wraps inside a button or badge", layout.wrap.length === 0, layout.wrap.join(", "));
   ok("prose stays near 70 characters per line", layout.measure.length === 0, layout.measure.join(", "));
 
+  // ═══════════════════════════════════════════════════════════════════════
+  console.log("\n── S24-S27 · the outcome ──");
+  // ═══════════════════════════════════════════════════════════════════════
+  await signInAs(page, "hospital");
+
+  await goto(page, "/hospital/outcome/cerviai");
+  t = await body(page);
+  ok("S24 decision band", t.includes("decision · extend") && t.includes("24 jan 2027"));
+  ok("…signed, with quorum and dissent count", t.includes("dr. p. raghunathan") && t.includes("quorum 6 of 7") && t.includes("0 dissent"));
+  ok("…quoting the rule as fixed at charter", t.includes("primary endpoints met, referral completion short"));
+  // The rule is RUN. Every comparison it made is on screen, so the committee
+  // checks arithmetic rather than agreeing on a reading.
+  ok("…and showing every comparison the rule made",
+    t.includes("comparisons the rule made") && t.includes("sensitivity for referable findings") && t.includes("target ≥ 80%, result 68%"));
+  ok("…with the re-run agreeing", t.includes("the rule still produces extend"));
+  ok("EXTEND carries a new question and a new stop rule",
+    t.includes("new question") && t.includes("referral coordinator closes the loop") && t.includes("new stop rule") && t.includes("below 70% at day 45"));
+
+  // ALL THREE BRANCHES RENDER. One outcome and two decorative options is not
+  // a three-outcome rule.
+  await goto(page, "/hospital/outcome/chestxr");
+  t = await body(page);
+  ok("ADOPT renders, with a BAU owner distinct from the trial owner",
+    t.includes("decision · adopt") && t.includes("business-as-usual owner") && t.includes("dr. r. venkatesan") && !t.includes("dr. meera krishnan"));
+  ok("…and says the rule was not re-run rather than implying it was",
+    t.includes("has not been re-run here"));
+
+  await goto(page, "/hospital/outcome/symptombot");
+  t = await body(page);
+  ok("RETIRE renders with data, device and patient-continuity plans",
+    t.includes("decision · retire") && t.includes("patient continuity") && t.includes("nurse-led reassessment"));
+
+  await goto(page, "/hospital/outcome/cerviai/closeout");
+  t = await body(page);
+  ok("S25 names people, not functions",
+    t.includes("s. anitha") && t.includes("community outreach coordinator") && t.includes("m. prakash") && t.includes("northvale it"));
+  ok("…and states the owner-vacancy trigger on screen",
+    t.includes("if a named post falls vacant") && t.includes("within 7 days"));
+
+  await goto(page, "/hospital/outcome/cerviai/registry");
+  t = await body(page);
+  ok("S26 keeps the three fields separate",
+    t.includes("assessment verdict") && t.includes("field status") && t.includes("latest outcome"));
+  ok("…publishes the MISSED endpoint, not only the met ones",
+    t.includes("colposcopy referral completion 68%") && t.includes("target ≥ 80%"));
+  ok("…publishes limitations", t.includes("limitations") && t.includes("one district"));
+  ok("…and logs the write-back with what changed and who caused it",
+    t.includes("write-back log") && t.includes("latest outcome: none → extend") && t.includes("raghunathan"));
+
+  await goto(page, "/hospital/outcome/cerviai/triggers");
+  t = await body(page);
+  ok("S27 lists six triggers", ["scheduled review", "model version change", "card expiry", "material safety event", "owner vacant", "usage below floor"].every((x) => t.includes(x)));
+  ok("…starting from a steady state", t.includes("current state — nothing fired"));
+  // FIRING CHANGES STATE. A trigger whose only effect is a notice is a trigger
+  // nobody acts on — so the assertion is on the pills, not the prose.
+  const beforeFire = await page.evaluate(() => [...document.querySelectorAll("main dd")].map((e) => e.textContent.trim()));
+  await page.evaluate(() => {
+    const card = [...document.querySelectorAll("main li")].find((li) => /model version change/i.test(li.textContent));
+    const b = card && [...card.querySelectorAll("button")].find((x) => /fire this trigger/i.test(x.textContent));
+    b?.click();
+  });
+  await sleep(600);
+  const afterFire = await page.evaluate(() => [...document.querySelectorAll("main dd")].map((e) => e.textContent.trim()));
+  ok("firing the model-version trigger suspends the card and pauses the run",
+    afterFire.includes("suspended") && afterFire.includes("paused") && JSON.stringify(beforeFire) !== JSON.stringify(afterFire),
+    `${beforeFire.join("/")} → ${afterFire.join("/")}`);
+
+  // Nothing complete-looking from a missing input, on the new screens too.
+  await goto(page, "/hospital/outcome/does-not-exist");
+  t = await body(page);
+  ok("an outcome for a trial nobody decided shows nothing, and says why", t.includes("no outcome decision") && !t.includes("decision · "));
+
   console.log(`\n${failures === 0 ? "BROWSER VERIFY PASSED" : `${failures} CHECK(S) FAILED`}`);
 } catch (e) {
   console.error("ERROR:", e.message);

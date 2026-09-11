@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 import type { GateStatus } from "@/lib/schemas/gate";
@@ -115,7 +115,21 @@ const EXAMPLE_EVIDENCE: Record<string, DraftDoc[]> = {
   "tool-retinascan": RETINASCAN_EVIDENCE,
 };
 
-export default function SubmitWizard() {
+/**
+ * useSearchParams() opts a route out of static prerendering unless it sits
+ * inside a Suspense boundary. The wizard reads ?example= to open a worked
+ * example from its card, so the boundary is here rather than the read being
+ * given up.
+ */
+export default function SubmitPage() {
+  return (
+    <Suspense fallback={<div className="py-24 text-center text-sm text-muted">Loading…</div>}>
+      <SubmitWizard />
+    </Suspense>
+  );
+}
+
+function SubmitWizard() {
   const router = useRouter();
   const params = useSearchParams();
   /**
