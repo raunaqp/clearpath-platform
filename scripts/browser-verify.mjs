@@ -317,7 +317,10 @@ try {
   ok("status column (Ongoing / Completed)", t.includes("ongoing") && t.includes("completed"));
   ok("View details action (not a dropdown)", t.includes("view details"));
   ok("both categories populated (trials + deployments)", t.includes("clinical trials") && t.includes("deployments"));
-  ok("sample numbers present", /412 \/ 1,000|620 \/ 1,200|300 \/ 300/.test(t));
+  // CerviAI ran to completion, so its enrolment reads 1,000 / 1,000. The other
+  // two are mid-flight and unchanged — the check is that a real fraction is on
+  // screen, not that any particular trial is unfinished.
+  ok("sample numbers present", /1,000 \/ 1,000|620 \/ 1,200|300 \/ 300/.test(t));
   await clickText(page, "View details");
   await page.waitForFunction(() => location.pathname.startsWith("/registry/"), { timeout: 8000 }).catch(() => {});
   await waitText(page, "assessment across four dimensions");
@@ -431,6 +434,11 @@ try {
   await sleep(900);
   t = await body(page);
   ok("trial Analysis shows study endpoints (populated, not empty)", t.includes("sensitivity") && t.includes("referral") && (t.includes("met") || t.includes("missed")));
+  // The day-45 interim, on the same screen as the endpoints: that the stop
+  // rule ran, that it did not fire, and why day 45 rather than day 60.
+  ok("…and the day-45 interim above them", t.includes("day 45 · interim review") && t.includes("stop rule did not fire"));
+  ok("…quoting the charter's futility rule, not a copy of it", t.includes("sensitivity below 0.75 at the day-45 interim"));
+  ok("…and tracing the review point to the dissent that created it", t.includes("why day 45") && t.includes("dr. s. bhaskar") && t.includes("day-45 interim rather than day-60"));
   await goto(page, "/workspace/chestxr");
   await waitText(page, "deployment workspace");
   await clickText(page, "Review");
@@ -507,7 +515,7 @@ try {
   await waitText(page, "cerviai"); // rows loaded
   t = await body(page);
   ok("'My applications' in the vendor nav (peer to Submit a tool)", t.includes("submit a tool") && t.includes("my applications") && t.includes("registry"));
-  ok("lists tool-hospital rows with stage + numbers (CerviAI @ Northvale, day 34/90)", t.includes("cerviai") && t.includes("northvale institute of medical sciences") && t.includes("day 34 of 90"));
+  ok("lists tool-hospital rows with stage + numbers (CerviAI @ Northvale, day 90/90)", t.includes("cerviai") && t.includes("northvale institute of medical sciences") && t.includes("day 90 of 90"));
   ok("shows request type + a completed deployment (ChestXR-TB)", t.includes("chestxr-tb") && t.includes("deployment request") && t.includes("trial request"));
   ok("includes other seeded pairings (Lakeview fertility trials)", t.includes("ovareserve") && t.includes("lakeview"));
 

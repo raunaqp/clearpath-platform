@@ -6,6 +6,9 @@
 
 import * as api from "@/lib/mock/api";
 import { buildTrialEndpoints, buildOwnership } from "@/lib/engine/deployment-report";
+import { buildTrialView } from "@/lib/mock/api-trial";
+import { buildCharter } from "@/lib/mock/governance";
+import { evaluateDecisionRule } from "@/lib/engine/decision-rule";
 
 let failures = 0;
 function check(label: string, cond: boolean, extra = "") {
@@ -16,11 +19,19 @@ function check(label: string, cond: boolean, extra = "") {
 async function main() {
   let dep = await api.getDeployment("deploy-cerviai");
   if (!dep) return console.log("no seed deployment");
-  check("CerviAI is a clinical trial, mid-flight", dep.kind === "trial" && dep.phase === "monitoring", `day ${dep.dayOf}/${dep.totalDays}`);
+  check("CerviAI is a clinical trial, run to completion", dep.kind === "trial" && dep.phase === "monitoring", `day ${dep.dayOf}/${dep.totalDays}`);
   check("has live metrics + alerts + drift", dep.metrics.length > 0 && dep.alerts.length > 0 && !!dep.driftWatch);
 
   // Analysis — study endpoints (not an operational scorecard)
-  const { endpoints, recommendation } = buildTrialEndpoints(dep);
+  const slug = dep.toolId.replace("tool-", "");
+  const trial = buildTrialView(slug);
+  const charter = buildCharter(slug);
+  const built = buildTrialEndpoints({
+    results: trial?.endpoints ?? [],
+    evaluation: charter && trial ? evaluateDecisionRule(charter, trial.endpoints) : null,
+  });
+  if (!built) return console.log("no endpoint results — nothing to analyse");
+  const { endpoints, recommendation } = built;
   await api.updateDeployment(dep.id, { endpoints, recommendation });
   dep = (await api.advanceDeployment(dep.id, "analysis"))!;
   check("study endpoints generated (4)", dep.endpoints.length === 4, dep.endpoints.map((e) => `${e.name}:${e.met ? "met" : "miss"}`).join(", "));

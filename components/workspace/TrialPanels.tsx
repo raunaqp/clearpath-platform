@@ -202,10 +202,90 @@ export function MonitoringContext({ trial }: { trial: TrialView }) {
  * the committee's act, and a screen that pre-empts it is how a rule fixed
  * before the trial gets renegotiated after it.
  */
+/**
+ * The day-45 interim: that the stop rule RAN, and that it did not fire.
+ *
+ * A trial that reports only its endpoints tells a reader what happened. It does
+ * not tell them whether anyone was watching while it happened, and those are
+ * different questions. Showing only fired stop rules would teach a reader that
+ * this platform reports failures — the same mistake as showing only open
+ * alerts. An unfired rule is evidence the rule was real.
+ */
+function InterimPanel({ interim }: { interim: NonNullable<TrialView["interim"]> }) {
+  return (
+    <section
+      className={cn(
+        "rounded-card border px-5 py-4",
+        interim.fired ? "border-[#993C1D]/30 bg-[#FAECE7]" : "border-line bg-bg-card"
+      )}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="font-serif text-lg text-ink">
+          Day {interim.day} · {interim.name}
+        </p>
+        <span
+          className={cn(
+            "shrink-0 whitespace-nowrap rounded-pill px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+            interim.fired ? "bg-[#993C1D] text-white" : "bg-[#EAF3DE] text-[#3B6D11]"
+          )}
+        >
+          {interim.fired ? "stop rule fired" : "stop rule did not fire"}
+        </span>
+      </div>
+
+      <dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+            Rule, fixed at charter
+          </dt>
+          <dd className="mt-0.5 text-sm leading-relaxed text-ink">{interim.ruleText}</dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+            {interim.rule.measure} at day {interim.day}
+          </dt>
+          <dd className="mt-0.5 text-sm text-ink">
+            <span className="font-medium">{interim.measuredDisplay}</span>{" "}
+            <span className="text-muted">
+              against a {interim.rule.threshold} bound
+            </span>
+          </dd>
+        </div>
+      </dl>
+
+      <p className="mt-3 text-sm leading-relaxed text-ink-2">{interim.outcome}</p>
+
+      {/*
+        WHY THIS REVIEW POINT EXISTS. A review point that appeared from nowhere
+        is a review point nobody owns. This one is here because a committee
+        member dissented at S18 and the dissent was accepted — the link is
+        derived from the verdict, not written here.
+      */}
+      {interim.tracesTo && (
+        <div className="mt-4 rounded-md bg-bg-sink px-3 py-2.5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#BA7517]">
+            Why day {interim.day}
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-ink-2">
+            <span className="text-ink">{interim.tracesTo.member}</span>{" "}dissented at the committee:
+            &ldquo;{interim.tracesTo.position}&rdquo; {interim.tracesTo.resolution}
+          </p>
+        </div>
+      )}
+
+      <p className="mt-3 text-xs text-muted">
+        Reviewed by {interim.reviewer} · {formatCardDateShort(interim.reviewedAt)}
+      </p>
+    </section>
+  );
+}
+
 export function ProvePanel({ trial }: { trial: TrialView }) {
   return (
     <div className="space-y-4">
       <DemoDataLabel />
+
+      {trial.interim && <InterimPanel interim={trial.interim} />}
 
       <section className="overflow-hidden rounded-card border border-line bg-bg-card">
         <p className="border-b border-line-soft px-4 py-3 font-serif text-lg text-ink">Endpoints</p>

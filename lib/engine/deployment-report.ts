@@ -8,6 +8,8 @@
 import type { Deployment, OwnershipPlan, Recommendation, ScorecardLine, TrialEndpoint } from "@/lib/schemas/deployment";
 import type { ToolReadinessCard } from "@/lib/schemas/readiness-card";
 import { softenCertainty } from "./soften-certainty";
+import type { DecisionClause, DecisionRuleEvaluation } from "./decision-rule";
+import type { EndpointResult } from "./trial-report";
 
 function clamp(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
@@ -70,30 +72,51 @@ export function buildScorecard(
 }
 
 /**
- * Trial "analysis" output — study endpoints (vs the deployment operational
- * scorecard). Deterministic; the follow-up endpoint reflects an open referral
- * gap. Recommendation: all met → SCALE · one short → EXTEND · else STOP.
+ * Trial "analysis" output — the study endpoints, and what the charter's own
+ * decision rule makes of them.
+ *
+ * IT USED TO INVENT THE NUMBERS. Sensitivity 0.90, specificity 0.86, referral
+ * 63% or 86% depending on an alert title — none of it read from anywhere, and
+ * all of it contradicting the charter-derived results the same trial reported
+ * on the next screen. Three sources of truth for one set of measurements, two
+ * of them fabricated.
+ *
+ * It now takes the results it is meant to display and the evaluation of the
+ * rule that was fixed before them, so the workspace's Analysis phase and the
+ * S24 outcome agree by construction rather than by coincidence.
+ *
+ * NULL WITHOUT RESULTS. A deployment with no endpoint results has had no
+ * analysis; saying so is the caller's job.
  */
-export function buildTrialEndpoints(
-  dep: Deployment
-): { endpoints: TrialEndpoint[]; recommendation: Recommendation } {
-  const hasReferralGap = dep.alerts.some((a) => /referral/i.test(a.title));
-  const endpoints: TrialEndpoint[] = [
-    { name: "Sensitivity for referable findings", kind: "primary", target: "≥ 0.85", result: "0.90", met: true },
-    { name: "Specificity", kind: "primary", target: "≥ 0.80", result: "0.86", met: true },
-    { name: "Follow-up / referral completion", kind: "secondary", target: "≥ 80%", result: hasReferralGap ? "63%" : "86%", met: !hasReferralGap },
-    { name: "Time to referral", kind: "secondary", target: "≤ 14 days", result: "11 days", met: true },
-  ];
-  const met = endpoints.filter((e) => e.met).length;
-  const decision = met === endpoints.length ? "SCALE" : met >= endpoints.length - 1 ? "EXTEND" : "STOP";
-  const rationale = softenCertainty(
-    decision === "SCALE"
-      ? "All study endpoints met; likely suitable to move from trial toward wider use."
-      : decision === "EXTEND"
-        ? "Primary endpoints met but a secondary endpoint fell short; likely worth extending the trial to close the gap."
-        : "Key endpoints not met; likely best to stop and revisit before continuing."
-  );
-  return { endpoints, recommendation: { decision, rationale } };
+const CLAUSE_TO_RECOMMENDATION: Record<DecisionClause, Recommendation["decision"]> = {
+  ADOPT: "SCALE",
+  EXTEND: "EXTEND",
+  RETIRE: "STOP",
+};
+
+export function buildTrialEndpoints(args: {
+  results: EndpointResult[];
+  evaluation: DecisionRuleEvaluation | null;
+}): { endpoints: TrialEndpoint[]; recommendation: Recommendation } | null {
+  const { results, evaluation } = args;
+  if (results.length === 0 || !evaluation) return null;
+
+  const endpoints: TrialEndpoint[] = results.map((r) => ({
+    name: r.name,
+    kind: r.kind,
+    target: r.target,
+    result: r.result,
+    met: r.met,
+  }));
+
+  return {
+    endpoints,
+    recommendation: {
+      decision: CLAUSE_TO_RECOMMENDATION[evaluation.clause],
+      // The rule's own sentence. Not a second opinion about the same numbers.
+      rationale: evaluation.why,
+    },
+  };
 }
 
 /** A sensible default handover ownership plan for the Handover phase. */

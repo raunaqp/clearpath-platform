@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check, Store } from "lucide-react";
@@ -24,6 +24,8 @@ import {
   publishToRegistry,
 } from "@/lib/mock/api";
 import { buildScorecard, buildOwnership, buildTrialEndpoints } from "@/lib/engine/deployment-report";
+import { evaluateDecisionRule } from "@/lib/engine/decision-rule";
+import type { TrialCharter } from "@/lib/schemas/governance";
 import { phasesFor, phaseIndex } from "@/lib/workspace/phases";
 import { VERDICT_STYLE, SITE_GRADE_STYLE, scoreAccent } from "@/lib/ui";
 import { PhaseStepper } from "@/components/workspace/PhaseStepper";
@@ -40,6 +42,7 @@ import { FileDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTrialView } from "@/lib/mock/api-trial";
 import type { TrialView } from "@/lib/mock/api-trial";
+import { getCharter } from "@/lib/mock/api-governance";
 import { DemoDataLabel, MonitoringContext, ProvePanel, TelemetryPanel } from "@/components/workspace/TrialPanels";
 
 /**
@@ -69,6 +72,7 @@ function HospitalWorkspace() {
 
   const [dep, setDep] = useState<Deployment | null>(null);
   const [trial, setTrial] = useState<TrialView | null>(null);
+  const [charter, setCharter] = useState<TrialCharter | null>(null);
   const [tool, setTool] = useState<Tool | null>(null);
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [vendor, setVendor] = useState<Vendor | null>(null);
@@ -77,6 +81,14 @@ function HospitalWorkspace() {
   const [view, setView] = useState<Phase>("setup");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  /**
+   * The charter's own rule, run against the charter-derived results. null
+   * until both have loaded, or where either does not exist.
+   */
+  const ruleEvaluation = useMemo(
+    () => (charter && trial ? evaluateDecisionRule(charter, trial.endpoints) : null),
+    [charter, trial]
+  );
   /** Surfaced when an action cannot proceed, rather than failing silently. */
   const [error, setError] = useState<string | null>(null);
 
@@ -91,6 +103,7 @@ function HospitalWorkspace() {
       if (t && deploymentId !== t.slug) router.replace(`/workspace/${t.slug}`);
       // Full trial telemetry exists only where a trial is actually running.
       void getTrialView(t?.slug ?? deploymentId).then((v) => setTrial(v ?? null));
+      void getCharter(t?.slug ?? deploymentId).then((c) => setCharter(c ?? null));
       setDep(d); setTool(t ?? null); setHospital(h ?? null); setVendor(v ?? null); setCard(c ?? null); setDocs(ds); setView(d.phase); setLoading(false);
     })();
     return () => { live = false; };
@@ -113,8 +126,17 @@ function HospitalWorkspace() {
   }
   async function generateAnalysis() {
     if (!dep) return;
-    const { endpoints, recommendation } = buildTrialEndpoints(dep);
-    await advance("analysis", { endpoints, recommendation });
+    // The charter-derived results and the rule fixed before them. No endpoint
+    // number is invented here any more.
+    const built = buildTrialEndpoints({
+      results: trial?.endpoints ?? [],
+      evaluation: ruleEvaluation,
+    });
+    if (!built) {
+      setError("This deployment has no endpoint results, so an analysis cannot be produced.");
+      return;
+    }
+    await advance("analysis", { endpoints: built.endpoints, recommendation: built.recommendation });
   }
   async function generateReview() {
     if (!dep) return;

@@ -187,7 +187,20 @@ export const TrialCharterSchema = z.object({
    * negotiated once the numbers are in. Writing it afterwards is how a trial
    * that missed its endpoints becomes a trial that "showed promise".
    */
-  decisionRule: z.object({ adopt: z.string(), extend: z.string(), retire: z.string() }),
+  decisionRule: z.object({
+    /**
+     * The endpoint the adopt/extend split turns on, NAMED AT CHARTER TIME.
+     *
+     * The three clauses below are the rule as agreed and are what gets shown.
+     * This one field is what lets S24 RUN the rule instead of reading it —
+     * without it the committee interprets a sentence in the room where the
+     * result is already known.
+     */
+    gatingEndpoint: z.string(),
+    adopt: z.string(),
+    extend: z.string(),
+    retire: z.string(),
+  }),
   budget: z.object({ amount: z.number(), currency: z.string(), display: z.string() }),
   commitments: z.object({
     /** Mirrored from the vendor's DeploymentRequest — read, never retyped. */

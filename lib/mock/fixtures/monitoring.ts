@@ -17,14 +17,24 @@ export type MonitoringData = {
   thresholds: { sensitivity: number; jsd: number };
 };
 
-const WEEKS = ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"];
+/**
+ * THIRTEEN WEEKS — the whole 90-day run, not the first eight.
+ *
+ * The charts stopped at W8 while the trial reported day 90 and final
+ * endpoints. Monitoring that ends five weeks before the trial does is the same
+ * defect as endpoint analysis a third of the way through it: a reader who
+ * checks the axis finds the run was only watched for two thirds of its length.
+ */
+const WEEKS = ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "W12", "W13"];
 
 export function buildMonitoring(dep: Deployment): MonitoringData {
   const hasReferralGap = dep.alerts.some((a) => /referral/i.test(a.title));
 
   // Sensitivity drifts very slightly; specificity stable.
-  const sensBase = [0.91, 0.9, 0.92, 0.9, 0.89, 0.9, 0.91, 0.9];
-  const specBase = [0.86, 0.87, 0.86, 0.85, 0.86, 0.86, 0.87, 0.86];
+  // Held above the 0.85 threshold throughout, which is why the day-45 futility
+  // rule (sensitivity below 0.75) never came close to firing.
+  const sensBase = [0.91, 0.9, 0.92, 0.9, 0.89, 0.9, 0.91, 0.9, 0.89, 0.9, 0.88, 0.89, 0.89];
+  const specBase = [0.86, 0.87, 0.86, 0.85, 0.86, 0.86, 0.87, 0.86, 0.85, 0.84, 0.85, 0.83, 0.83];
   const performance: PerfPoint[] = WEEKS.map((week, i) => ({
     week,
     sensitivity: sensBase[i],
@@ -33,9 +43,9 @@ export function buildMonitoring(dep: Deployment): MonitoringData {
 
   // Drift: data JSD ticks up around W5–W6 (a mild distribution shift); a tool
   // with an open referral gap shows a slightly larger prediction-drift bump.
-  const dataJsd = [0.02, 0.03, 0.03, 0.04, 0.06, 0.07, 0.05, 0.04];
+  const dataJsd = [0.02, 0.03, 0.03, 0.04, 0.06, 0.07, 0.05, 0.04, 0.04, 0.05, 0.05, 0.06, 0.05];
   const predBump = hasReferralGap ? 0.09 : 0.05;
-  const predJsd = [0.02, 0.02, 0.03, 0.04, 0.06, predBump, 0.06, 0.05];
+  const predJsd = [0.02, 0.02, 0.03, 0.04, 0.06, predBump, 0.06, 0.05, 0.05, 0.04, 0.05, 0.06, 0.06];
   const drift: DriftPoint[] = WEEKS.map((week, i) => ({ week, dataJsd: dataJsd[i], predJsd: predJsd[i] }));
 
   // Subgroup fairness — one subgroup lags (the fairness signal).

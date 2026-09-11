@@ -15,20 +15,24 @@ export const DEPLOYMENTS: Deployment[] = [
     toolId: "tool-cerviai",
     kind: "trial",
     phase: "monitoring",
-    dayOf: 34,
+    // Day 90 of 90. The trial is complete; S23's endpoint analysis is only
+    // possible because it is.
+    dayOf: 90,
     totalDays: 90,
     metrics: [
-      { key: "enrolment", label: "Enrolment", value: "412 / 1,000", hint: "women screened" },
-      { key: "docs", label: "Documents", value: "78%", hint: "eTMF-lite complete" },
-      { key: "alerts", label: "Open alerts", value: "2", hint: "1 high severity" },
-      { key: "followup", label: "Colposcopy follow-up", value: "63%", hint: "target ≥ 80%" },
+      { key: "enrolment", label: "Enrolment", value: "1,000 / 1,000", hint: "women screened" },
+      { key: "docs", label: "Documents", value: "100%", hint: "eTMF-lite complete" },
+      { key: "alerts", label: "Open alerts", value: "1", hint: "referral gap, carried into the decision" },
+      // 68%, matching the endpoint result. These were 63% and 68% — two
+      // numbers for one measurement, on two screens.
+      { key: "followup", label: "Colposcopy follow-up", value: "68%", hint: "target ≥ 80%" },
     ],
     alerts: [
       {
         id: "alert-referral-gap",
         severity: "high",
         title: "Referral gap",
-        detail: "Colposcopy follow-up at 63%, below the 80% target for flagged cases.",
+        detail: "Colposcopy follow-up at 68%, below the 80% target for flagged cases.",
         escalation: "Escalated to site PI; a referral coordinator has been added to close the loop.",
       },
       {

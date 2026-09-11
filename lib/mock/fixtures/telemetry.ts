@@ -1,7 +1,13 @@
 import type { AdoptionPoint, AlertRecord, TrialTelemetry } from "@/lib/schemas/telemetry";
 
 /**
- * CerviAI's trial telemetry at Northvale, day 34 of 90.
+ * CerviAI's trial telemetry at Northvale, DAY 90 OF 90 — the trial is complete.
+ *
+ * It used to read day 34 while S23 showed final endpoint results. Completed
+ * endpoint analysis a third of the way through a trial is not possible, and it
+ * is the same class of defect as a request that "landed in an inbox" it never
+ * reached: seeded data reporting a state nobody arrived at. A reviewer spots
+ * it immediately, and having spotted one they stop trusting the rest.
  *
  * Representative demonstration data. Every derived figure — the override rate,
  * the support level in force, the export formats — is computed from something
@@ -10,32 +16,33 @@ import type { AdoptionPoint, AlertRecord, TrialTelemetry } from "@/lib/schemas/t
  */
 export const CERVIAI_TELEMETRY: TrialTelemetry = {
   slug: "cerviai",
-  enrolment: { screened: 412, target: 1000, dayOf: 34, totalDays: 90 },
+  enrolment: { screened: 1000, target: 1000, dayOf: 90, totalDays: 90 },
   devices: {
     online: 4,
     total: 4,
     replacements: [{ day: 19, note: "Tablet at CHC-2 replaced within the 72h SLA." }],
     // Where a deployment quietly stops: nobody notices until the box is empty.
-    consumablesPct: 68,
+    // Low at the end of a completed run is the expected shape.
+    consumablesPct: 22,
   },
   failures: {
     // A refused read is the quality gate WORKING — the device declining to
     // guess on an image below threshold. Counting it as a failure would
     // discourage exactly the behaviour the safety gate depends on.
-    refusedReads: 11,
+    refusedReads: 28,
     downtimeDays: 0,
   },
-  // 19 / 264 → 7.2%. The rate is derived; these two counts are the record.
-  overrides: { flagsRaised: 264, flagsOverridden: 19 },
+  // 47 / 653 → 7.2%. The rate is derived; these two counts are the record.
+  overrides: { flagsRaised: 653, flagsOverridden: 47 },
   exportTest: {
     // Overwritten at read time from the request's own dataExport formats.
     formats: [],
     testedOnDay: 30,
-    result: "Both formats produced and opened. 412 records, no schema errors.",
+    result: "Both formats produced and opened. 1,000 records, no schema errors.",
   },
   protocolAdherence: { pct: 92, targetPct: 90 },
   provenance: {
-    lastUpdated: "2026-11-28T18:00:00+05:30",
+    lastUpdated: "2027-01-24T18:00:00+05:30",
     source: "Site capture log, 4 CHCs",
     reviewer: "Dr. Meera Krishnan",
     cadence: "Weekly",
@@ -84,7 +91,34 @@ export const CERVIAI_ADOPTION: Omit<AdoptionPoint, "supportLevel">[] = [
   { week: 6, screens: 99 },
   { week: 7, screens: 97 },
   { week: 8, screens: 96 },
+  /**
+   * The tail is catchment saturation, not abandonment, and the distinction
+   * matters: use held steady through the week-7 taper to on-call support, and
+   * only fell once the eligible women in four CHC catchments had been screened.
+   * A flat 96 a week to day 90 would have overshot the 1,000 target by week 11
+   * and shown a trial that ran past its own enrolment.
+   */
+  { week: 9, screens: 78 },
+  { week: 10, screens: 62 },
+  { week: 11, screens: 47 },
+  { week: 12, screens: 34 },
+  { week: 13, screens: 24 },
 ];
+
+/**
+ * WHAT THE DAY-45 INTERIM MEASURED.
+ *
+ * Only the measurement lives here. The rule, its threshold, the day and
+ * whether it fired are all read from the charter by `evaluateInterim` — a
+ * fixture that carried its own copy of "0.75" could drift from the charter
+ * that authorised the stop.
+ */
+export const CERVIAI_INTERIM = {
+  measured: 0.87,
+  measuredDisplay: "0.87",
+  reviewedAt: "2026-12-10T00:00:00.000Z",
+  reviewer: "Dr. Meera Krishnan",
+};
 
 /** Measured actuals, against what the charter and placement estimated. */
 export const CERVIAI_ACTUALS = {

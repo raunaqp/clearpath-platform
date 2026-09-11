@@ -268,6 +268,9 @@ export function buildCharter(slug: string): TrialCharter | undefined {
       operational: "Fewer than 40 screens per week for 2 consecutive weeks.",
     },
     decisionRule: {
+      // The endpoint the split turns on. Named here, at charter time, so S24
+      // evaluates the rule rather than interpreting it.
+      gatingEndpoint: "Colposcopy referral completion",
       adopt: "All primary endpoints met and referral completion at or above 80% — adopt.",
       extend: "Primary endpoints met, referral completion short — extend against a stated new question.",
       retire: "Primary endpoints missed — retire.",

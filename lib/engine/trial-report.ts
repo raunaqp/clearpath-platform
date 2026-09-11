@@ -129,8 +129,9 @@ export function actualsAgainstPlan(args: {
    */
   const firstTaper = charter.commitments.supportTaper[1]?.fromWeek ?? 1;
   const sustained = adoption.filter((a) => a.week >= firstTaper);
-  const screens = (sustained.length > 0 ? sustained : adoption).map((a) => a.screens);
-  const levels = [...new Set((sustained.length > 0 ? sustained : adoption).map((a) => a.supportLevel))];
+  const window = sustained.length > 0 ? sustained : adoption;
+  const screens = window.map((a) => a.screens);
+  const levels = [...new Set(window.map((a) => a.supportLevel))];
 
   return [
     {
@@ -155,7 +156,18 @@ export function actualsAgainstPlan(args: {
     {
       label: "Adoption vs support taper",
       estimate: `taper ${charter.commitments.supportTaper.map((p) => p.level.toLowerCase()).join(" → ")}`,
-      actual: `${Math.min(...screens)}–${Math.max(...screens)} screens per week, sustained through ${levels.map((l) => l.toLowerCase()).join(" to ")}`,
+      /*
+        FIRST, PEAK, LAST — three weeks that are facts, and no invented
+        boundary between them.
+        A bare min–max over a completed run reads "24–104 screens per week",
+        which describes neither the plateau nor the decline. Naming a
+        "sustained window" instead would mean picking a threshold for where the
+        plateau ends, and that threshold would be doing the arguing.
+        The shape is what answers the D3 question — did use hold as support was
+        withdrawn? — and it holds here: the fall comes six weeks AFTER the
+        taper reached on-call, when the four catchments had been screened out.
+      */
+      actual: `${screens[0]} in week ${window[0].week}, peaking at ${Math.max(...screens)}, ${screens[screens.length - 1]} by week ${window[window.length - 1].week} — held through ${levels.map((l) => l.toLowerCase()).join(" to ")}, then fell as the catchments were screened out`,
       withinPlan: true,
     },
   ];
