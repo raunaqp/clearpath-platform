@@ -35,7 +35,8 @@ const s4 = gatesNotYetEstablished(CERVIAI_EVIDENCE);
 // assertion alone.
 //
 // TWO, down from fifteen: CerviAI now carries the operational file that
-// establishes the thirteen gates the declaration fallback used to fill in.
+// establishes the 13 of its 17 TOOL gates that the declaration fallback used
+// to fill in. Not the hospital intake audit, which has 14 gates of its own.
 eq("S4 and S5 report the SAME gap count", [s4.length, s5.gateGaps.length], [2, 2]);
 eq("…and the same gates", s4.map((d) => d.gateId).sort(), s5.gateGaps.map((d) => d.gateId).sort());
 ok("both come from one function", s4.length === findGateGaps(CERVIAI_EVIDENCE).length);
